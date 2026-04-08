@@ -143,36 +143,51 @@ def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
     )
 
     system = (
-        "You are an AI news curator for LinkedIn. "
+        "You are an AI news curator writing daily LinkedIn posts for a senior AI architect. "
+        "Your posts are read by a mixed audience: senior engineers and architects who want depth, "
+        "plus junior/mid engineers who need clarity. "
+        "Use precise technical terminology (model architecture, inference, fine-tuning, RLHF, "
+        "RAG, latency, throughput, context window, quantisation, etc.) but always explain the "
+        "'so what' in plain terms so a mid-level engineer can follow. "
+        "Never use buzzwords like 'game-changer', 'revolutionary', 'unlock', 'empower'. "
         "Reply ONLY with valid JSON, no markdown fences."
     )
 
     user = f"""Today's AI items (last 24 h):
 {feed_lines}
 
-Instructions:
-1. Pick the SINGLE best story. Score it 1-10 on: novelty, real technical impact, to senior engineers/architects.
-   Reject vendor hype, generic "AI transforms X" pieces, and anything scoring below 6.
-2. Write a architect-style LinkedIn comment:
-   - Line 1: fresh reframe or non-obvious angle (not a summary)
-   - Line 2: strategic or architectural implication
-   - Line 3: intriguing close, ends with 👇
-   - Focus: what's interesting and why it matters
-   Tone: smart, authentic, no hype, no fake references.
-3. If nothing scores ≥6, set "score": 0.
+Selection criteria — score each story on three dimensions (1-10 each):
+  A. Technical novelty & real engineering impact (not just a new model release).
+  B. Relevance for AI architects and engineers at all levels.
+  C. Visual appeal of the linked page: prefer well-known sites (Hugging Face blog,
+     Anthropic blog, DeepMind blog, Papers With Code) over raw arXiv abstract pages
+     when content quality is comparable. A story with a rich preview image or a
+     polished article page scores higher here.
+Final score = average of A, B, C (round to int).
+Reject vendor hype, generic "AI transforms X" pieces, and anything scoring below 6.
+If nothing scores ≥6 set "score": 0.
+
+Comment writing rules (STRICT):
+  - Maximum 3 lines, absolute hard limit 4 lines. No exceptions.
+  - Line 1: one sharp, non-obvious technical insight or reframe — not a summary.
+  - Line 2: concrete architectural or engineering implication (what should an engineer do/think differently?).
+  - Line 3 (optional line 4 max): intriguing close that invites discussion, ends with 👇
+  - Use precise AI/ML terms but keep sentences short enough for a mid engineer to parse in one read.
+  - No hashtags. No emojis except the final 👇. No fake statistics.
+  - Tone: direct, intellectually honest, zero hype.
 
 Return exactly this JSON (no extra keys):
 {{
   "score": <int>,
-  "title": "<max 12 words>",
-  "url": "<url or empty string>",
-  "comment": "<1-2 lines, natural English>"
+  "title": "<story title, max 12 words>",
+  "url": "<canonical article URL or empty string>",
+  "comment": "<post text, max 4 lines, newlines as \\n>"
 }}"""
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=350,
+        max_tokens=400,
         system=system,
         messages=[{"role": "user", "content": user}],
     )
@@ -201,6 +216,12 @@ Return exactly this JSON (no extra keys):
 
     # Normalise the URL returned by the LLM (may be an arXiv identifier)
     data["url"] = normalize_url(data.get("url", ""))
+
+    # Hard-cap the comment to 4 lines regardless of what the LLM returned
+    comment_lines = data["comment"].split("\n")
+    if len(comment_lines) > 4:
+        log.warning("LLM comment exceeded 4 lines (%d) — truncating", len(comment_lines))
+        data["comment"] = "\n".join(comment_lines[:4])
 
     return data["comment"], data
 
