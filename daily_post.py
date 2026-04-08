@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Daily LinkedIn AI News Post — automated pipeline.
 
-Flow: fetch RSS feeds → Claude Haiku selects best story + writes comment → publish LinkedIn → notify Telegram.
+Flow: fetch RSS feeds → Claude Haiku ranks top stories → pick first with valid URL → publish LinkedIn → notify Telegram.
 """
 
 import json
@@ -41,7 +41,8 @@ RSS_FEEDS = {
     "AI Magazine":        "https://aimagazine.com/rss.xml",
 }
 
-MIN_SCORE = 5  # Publish if best story scores at or above this threshold
+MIN_SCORE = 5       # Skip the whole run only when the best story is below this
+RANKED_TOP_N = 5    # How many ranked candidates the LLM returns for fallback chain
 
 LINKEDIN_API = "https://api.linkedin.com/rest/posts"
 LINKEDIN_VERSION = "202603"  # March 2026 version
@@ -88,6 +89,11 @@ def normalize_url(url: str) -> str:
     return ""
 
 
+def _is_valid_url(url: str) -> bool:
+    """Return True only when url is an absolute https:// URL."""
+    return bool(url) and url.startswith("https://")
+
+
 def fetch_feeds() -> list[dict]:
     """Fetch all RSS feeds and return items published in the last 24 hours."""
     cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -125,8 +131,22 @@ def fetch_feeds() -> list[dict]:
     return items
 
 
+def _truncate_comment(comment: str) -> str:
+    """Hard-cap comment to 4 lines."""
+    lines = comment.split("\n")
+    if len(lines) > 4:
+        log.warning("LLM comment exceeded 4 lines (%d) — truncating", len(lines))
+        return "\n".join(lines[:4])
+    return comment
+
+
 def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
-    """Use Claude Haiku to pick the best story and generate a LinkedIn comment."""
+    """Use Claude Haiku to rank the top stories and generate comments for each.
+
+    The LLM returns a ranked list of up to RANKED_TOP_N candidates.
+    We then pick the first candidate that has a valid https:// URL so that
+    a post with an article card is always published.
+    """
     if not items:
         return None, None
 
@@ -149,38 +169,45 @@ def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
     user = f"""Today's AI items (last 24 h):
 {feed_lines}
 
-Task: pick the SINGLE best story and assign it ONE score 1-10 based on:
+Task: rank the best {RANKED_TOP_N} stories from the list above and write a LinkedIn comment for each.
+
+Scoring criteria (single score 1-10 per story):
   - Technical novelty and real engineering impact (not just a new release announcement)
   - Relevance for AI architects and engineers at all seniority levels
-  - Visual appeal of the source page: prefer polished editorial sites (OpenAI, Anthropic,
-    DeepMind, Google AI, Hugging Face, MIT Tech Review, AI Magazine, Papers With Code)
-    over raw arXiv abstract pages when content quality is comparable
+  - Visual appeal of the source: prefer polished editorial sites (OpenAI, Anthropic, DeepMind,
+    Google AI, Hugging Face, MIT Tech Review, AI Magazine, Papers With Code) over raw arXiv
+    abstract pages when content quality is comparable
 
-IMPORTANT: you MUST always pick the best available story and return its score.
-Only set "score": 0 if every single item is pure vendor marketing with zero technical content.
-In all other cases return the best story even if it scores only 5.
+IMPORTANT:
+  - Always return exactly {RANKED_TOP_N} candidates ordered best-first (rank 1 = best).
+  - Include the exact URL from the item list for each story.
+  - Only omit a story if it is pure vendor marketing with zero technical content.
 
-Comment writing rules (STRICT):
-  - Maximum 3 lines, absolute hard limit 4 lines. No exceptions.
-  - Line 1: one sharp, non-obvious technical insight or reframe — not a summary.
+Comment writing rules (apply to every comment, STRICT):
+  - Maximum 3 lines, absolute hard limit 4 lines.
+  - Line 1: sharp, non-obvious technical insight or reframe — not a summary.
   - Line 2: concrete architectural or engineering implication.
   - Line 3 (optional line 4 max): intriguing close that invites discussion, ends with 👇
-  - Use precise AI/ML terms but keep sentences short enough for a mid engineer to parse.
   - No hashtags. No emojis except the final 👇. No fake statistics.
   - Tone: direct, intellectually honest, zero hype.
 
 Return exactly this JSON (no extra keys):
 {{
-  "score": <int 1-10>,
-  "title": "<story title, max 12 words>",
-  "url": "<canonical article URL or empty string>",
-  "comment": "<post text, max 4 lines, newlines as \\n>"
+  "candidates": [
+    {{
+      "rank": 1,
+      "score": <int 1-10>,
+      "title": "<story title, max 12 words>",
+      "url": "<exact URL from the item list>",
+      "comment": "<post text, max 4 lines, newlines as \\n>"
+    }}
+  ]
 }}"""
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=400,
+        max_tokens=1200,
         system=system,
         messages=[{"role": "user", "content": user}],
     )
@@ -203,30 +230,41 @@ Return exactly this JSON (no extra keys):
         log.error("LLM returned invalid JSON: %s", raw)
         return None, None
 
-    score = data.get("score", 0)
-    log.info("LLM score: %d (threshold: %d)", score, MIN_SCORE)
-
-    if score < MIN_SCORE:
-        log.info("Best story scored %d — below threshold %d, skipping.", score, MIN_SCORE)
+    candidates = data.get("candidates", [])
+    if not candidates:
+        log.error("LLM returned no candidates")
         return None, None
 
-    # Normalise URL (may be an arXiv identifier from the LLM)
-    data["url"] = normalize_url(data.get("url", ""))
+    # Walk the ranked list and pick the first candidate with a valid https:// URL
+    for candidate in candidates:
+        score = candidate.get("score", 0)
+        url = normalize_url(candidate.get("url", ""))
+        title = candidate.get("title", "")
+        comment = candidate.get("comment", "")
+        rank = candidate.get("rank", "?")
 
-    # Hard-cap the comment to 4 lines regardless of LLM output
-    comment_lines = data["comment"].split("\n")
-    if len(comment_lines) > 4:
-        log.warning("LLM comment exceeded 4 lines (%d) — truncating", len(comment_lines))
-        data["comment"] = "\n".join(comment_lines[:4])
+        log.info("Candidate rank=%s score=%d url_valid=%s title=%s", rank, score, _is_valid_url(url), title)
 
-    return data["comment"], data
+        if score < MIN_SCORE:
+            log.info("  → skipped (score %d < threshold %d)", score, MIN_SCORE)
+            continue
+
+        if not _is_valid_url(url):
+            log.warning("  → skipped (invalid URL '%s'), trying next candidate", url)
+            continue
+
+        # Valid candidate found
+        candidate["url"] = url
+        candidate["comment"] = _truncate_comment(comment)
+        log.info("Selected candidate rank=%s score=%d", rank, score)
+        return candidate["comment"], candidate
+
+    log.info("No candidate passed score + URL validation (threshold=%d)", MIN_SCORE)
+    return None, None
 
 
 def publish_linkedin(comment: str, article_url: str, article_title: str, person_id: str, token: str) -> str:
-    """Post a public text update to LinkedIn. Returns the post ID.
-
-    Falls back to text-only post when article_url is missing/invalid.
-    """
+    """Post a public article update to LinkedIn. Returns the post ID."""
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
@@ -240,20 +278,13 @@ def publish_linkedin(comment: str, article_url: str, article_title: str, person_
         "distribution": {"feedDistribution": "MAIN_FEED"},
         "lifecycleState": "PUBLISHED",
         "isReshareDisabledByAuthor": False,
-    }
-
-    if article_url and article_url.startswith("https://"):
-        payload["content"] = {
+        "content": {
             "article": {
                 "source": article_url,
                 "title": article_title,
             }
-        }
-    else:
-        log.warning(
-            "article_url '%s' is not a valid https URL — publishing as text-only post",
-            article_url,
-        )
+        },
+    }
 
     resp = requests.post(LINKEDIN_API, headers=headers, json=payload, timeout=30)
 
@@ -299,21 +330,21 @@ def main() -> None:
         # 1 — Collect news
         items = fetch_feeds()
 
-        # 2 — Select + generate comment
+        # 2 — Rank + generate comments
         comment, story = select_and_comment(items)
 
         if not comment:
-            msg = "📰 <b>Daily AI Post</b>: no qualifying news today (score &lt;{MIN_SCORE}). Skipping."
+            msg = f"📰 <b>Daily AI Post</b>: no qualifying news today (threshold={MIN_SCORE}). Skipping."
             log.info("No qualifying news — skipping LinkedIn post.")
             send_telegram(msg, tg_token, tg_chat)
             return
 
-        log.info("Selected: %s (score %s)", story["title"], story["score"])
+        log.info("Publishing: %s (score %s)", story["title"], story["score"])
 
-        # 3 — Publish
+        # 3 — Publish (article card guaranteed — url was validated before reaching here)
         post_id = publish_linkedin(
             comment,
-            story.get("url", ""),
+            story["url"],
             story["title"],
             os.environ["LINKEDIN_PERSON_ID"],
             os.environ["LINKEDIN_ACCESS_TOKEN"],
@@ -323,8 +354,8 @@ def main() -> None:
         tg_msg = (
             "✅ <b>LinkedIn post published!</b>\n\n"
             f"📌 <b>{story['title']}</b>\n"
-            f"🔗 {story.get('url') or 'N/A'}\n"
-            f"⭐ Score: {story['score']}/10\n\n"
+            f"🔗 {story['url']}\n"
+            f"⭐ Score: {story['score']}/10 (rank #{story.get('rank', '?')})\n\n"
             f"💬 <i>{comment}</i>\n\n"
             f"🆔 Post ID: {post_id}"
         )
