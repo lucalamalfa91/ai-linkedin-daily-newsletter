@@ -25,10 +25,7 @@ log = logging.getLogger(__name__)
 
 # ── RSS Sources ───────────────────────────────────────────────────────────────
 RSS_FEEDS = {
-    # Research & primary sources
-    "ArXiv AI":           "https://rss.arxiv.org/rss/cs.AI",
-    "Papers With Code":   "https://paperswithcode.com/rss",
-    # AI labs — official blogs (high visual quality, authoritative)
+    # AI labs — official engineering blogs
     "OpenAI":             "https://openai.com/news/rss.xml",
     "Anthropic":          "https://www.anthropic.com/rss.xml",
     "DeepMind":           "https://deepmind.google/blog/rss.xml",
@@ -36,9 +33,14 @@ RSS_FEEDS = {
     # Engineering-focused blogs
     "Hugging Face":       "https://huggingface.co/blog/feed.xml",
     "MarkTechPost":       "https://www.marktechpost.com/feed/",
-    # Editorial / industry news (good visual appeal)
+    # Editorial / industry news
     "MIT Tech Review AI": "https://www.technologyreview.com/topic/artificial-intelligence/feed/",
     "AI Magazine":        "https://aimagazine.com/rss.xml",
+    "TechCrunch AI":      "https://techcrunch.com/category/artificial-intelligence/feed/",
+    # Practitioner-oriented long-form
+    "Medium — AI":        "https://medium.com/feed/tag/artificial-intelligence",
+    "Medium — MLOps":     "https://medium.com/feed/tag/mlops",
+    "Medium — LLM":       "https://medium.com/feed/tag/large-language-models",
 }
 
 MIN_SCORE = 5       # Skip the whole run only when the best story is below this
@@ -151,7 +153,7 @@ def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
         return None, None
 
     feed_lines = "\n".join(
-        f"[{i + 1}] ({it['source']}) {it['title']} — {it['summary'][:200]}"
+        f"[{i + 1}] ({it['source']}) {it['title']} — {it['link']} — {it['summary'][:200]}"
         for i, it in enumerate(items[:30])
     )
 
@@ -174,13 +176,13 @@ Task: rank the best {RANKED_TOP_N} stories from the list above and write a Linke
 Scoring criteria (single score 1-10 per story):
   - Technical novelty and real engineering impact (not just a new release announcement)
   - Relevance for AI architects and engineers at all seniority levels
-  - Visual appeal of the source: prefer polished editorial sites (OpenAI, Anthropic, DeepMind,
-    Google AI, Hugging Face, MIT Tech Review, AI Magazine, Papers With Code) over raw arXiv
-    abstract pages when content quality is comparable
+  - Prefer sources with polished editorial pages: OpenAI, Anthropic, DeepMind, Google AI,
+    Hugging Face, MIT Tech Review, TechCrunch, Medium — stories with clear https:// article URLs
+    rank higher than items without a direct link
 
 IMPORTANT:
   - Always return exactly {RANKED_TOP_N} candidates ordered best-first (rank 1 = best).
-  - Include the exact URL from the item list for each story.
+  - Copy the exact URL shown in the item list into the \"url\" field — do NOT invent URLs.
   - Only omit a story if it is pure vendor marketing with zero technical content.
 
 Comment writing rules (apply to every comment, STRICT):
