@@ -47,12 +47,24 @@ RSS_FEEDS = {
 
 # Topics that get a scoring bonus — used in the prompt
 FOCUS_TOPICS = (
+    # Agentic systems & orchestration
     "AI agents, agent orchestration, multi-agent systems, "
+    "agent harness, agent scaffolding, agent test harness, agent evaluation frameworks, "
+    "goal-driven agents, goal-conditioned agents, task planning agents, "
+    "autonomous agents, self-improving agents, recursive self-improvement, "
     "Claude Code, OpenAI Codex / Operator, "
     "LangChain, LangGraph, LlamaIndex, AutoGen, CrewAI, "
+    # LLM capabilities & reasoning
+    "LLM capabilities, emergent capabilities, reasoning models, chain-of-thought, "
+    "tree-of-thought, reflection, self-critique, model self-evaluation, "
+    "instruction following, alignment, RLHF, RLAIF, constitutional AI, "
+    "long-context models, extended context, needle-in-a-haystack, "
+    # RAG & retrieval
     "RAG (retrieval-augmented generation), vector databases, reranking, hybrid search, "
     "context window optimisation, prompt compression, KV-cache, "
+    # Cost & efficiency
     "token cost reduction, inference cost, quantisation, "
+    # Tooling & protocols
     "tool use / function calling, MCP (model context protocol), "
     "agent memory, agent skills / capabilities"
 )
@@ -187,7 +199,8 @@ Task: rank the best {RANKED_TOP_N} stories and write a LinkedIn comment for each
 
 Scoring rules (1-10):
   +3  Story directly covers a focus topic (agents, RAG, LangChain/LangGraph, context optimisation,
-      token cost, tool use, MCP, agent memory, Claude Code, etc.)
+      token cost, tool use, MCP, agent memory, Claude Code, agent harness, LLM capabilities,
+      goal-driven agents, reasoning models, emergent capabilities, etc.)
   +2  Practical implementation or pattern — not just an announcement
   +2  From a top source: OpenAI, Anthropic, LangChain, LlamaIndex, Hugging Face,
       Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research,
