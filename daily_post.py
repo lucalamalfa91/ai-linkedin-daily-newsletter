@@ -159,12 +159,15 @@ def fetch_feeds() -> list[dict]:
 
 
 def _truncate_comment(comment: str) -> str:
-    """Hard-cap comment to 4 lines."""
+    """Hard-cap comment to 4 lines (excluding hashtag line)."""
     lines = comment.split("\n")
-    if len(lines) > 4:
-        log.warning("LLM comment exceeded 4 lines (%d) — truncating", len(lines))
-        return "\n".join(lines[:4])
-    return comment
+    # Allow up to 5 lines if last line contains only hashtags
+    content_lines = [l for l in lines if not l.strip().startswith("#")]
+    hashtag_lines = [l for l in lines if l.strip().startswith("#")]
+    if len(content_lines) > 4:
+        log.warning("LLM comment exceeded 4 content lines (%d) — truncating", len(content_lines))
+        content_lines = content_lines[:4]
+    return "\n".join(content_lines + hashtag_lines)
 
 
 def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
@@ -181,11 +184,14 @@ def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
     )
 
     system = (
-        "You write daily LinkedIn posts for a senior AI architect. "
-        "The audience: engineers and architects building real AI systems — agents, RAG pipelines, LLM-powered apps. "
-        "Write like a practitioner talking to peers. Short sentences. No fluff. "
-        "2-3 emojis per post — natural, not decorative. "
-        "Banned words: game-changer, revolutionary, unlock, empower, leverage, synergy, groundbreaking. "
+        "You ghost-write LinkedIn posts for Luca, a senior software engineer based in Switzerland. "
+        "Luca's audience is a broad professional network — developers, tech managers, recruiters, and curious people — not just AI specialists. "
+        "His voice: friendly, direct, enthusiastic but never over-the-top. Like a colleague sharing something interesting at coffee. "
+        "ONE idea per post. Short sentences. Breathe between thoughts. "
+        "Never more than one technical term per post — and when you use one, explain it in plain words immediately after. "
+        "Posts must NOT sound AI-generated. No bullet lists. No structured breakdowns. No 'here are X patterns'. "
+        "Banned words: game-changer, revolutionary, unlock, empower, leverage, synergy, groundbreaking, orchestration layer, control loop, paradigm. "
+        "End every post with 2-3 relevant hashtags on the last line. "
         "Reply ONLY with valid JSON, no markdown fences."
     )
 
@@ -195,43 +201,44 @@ def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
 FOCUS TOPICS — stories on these score highest:
 {FOCUS_TOPICS}
 
-Task: rank the best {RANKED_TOP_N} stories and write a LinkedIn comment for each.
+Task: rank the best {RANKED_TOP_N} stories and write a LinkedIn post for each.
 
 Scoring rules (1-10):
   +3  Story directly covers a focus topic (agents, RAG, LangChain/LangGraph, context optimisation,
       token cost, tool use, MCP, agent memory, Claude Code, agent harness, LLM capabilities,
       goal-driven agents, reasoning models, emergent capabilities, etc.)
-  +2  Practical implementation or pattern — not just an announcement
+  +2  Practical and relevant to people building or curious about AI today
   +2  From a top source: OpenAI, Anthropic, LangChain, LlamaIndex, Hugging Face,
       Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research,
       TechCrunch, VentureBeat
-  +1  Story connects to something engineers are actively debating right now
-  -3  Pure product marketing, no technical substance
-  -3  Sysadmin / DevOps only, no AI-specific insight
+  +1  Story sparks a genuine question that anyone in tech would want to discuss
+  -3  Pure product marketing, no real content
+  -3  Sysadmin / DevOps only, no AI angle
   -2  Generic "AI is transforming X" without concrete detail
 
 IMPORTANT:
   - Return exactly {RANKED_TOP_N} candidates, best-first.
   - Copy the exact URL from the list — never invent one.
 
-Comment style (STRICT):
-  - 3 lines. Hard max 4.
-  - Line 1: a sharp take or non-obvious observation. Not a summary.
-    Start with a relevant emoji if it fits.
-  - Line 2: concrete implication for someone building agents / RAG / LLM systems today.
-  - Line 3: short question that sparks discussion. Ends with 👇
-  - 2-3 emojis total, spread across lines.
-  - Short sentences — split on commas.
-  - No jargon without context. Technical terms OK if the meaning is clear.
-  - Sound like a practitioner, not a newsletter editor.
+Post style (STRICT — Luca's personal voice):
+  - 3 short sentences max. Hard max 4.
+  - Sentence 1: hook — share the news or finding simply, like you\'re telling a friend.
+    One relevant emoji at the start or naturally placed in the sentence.
+  - Sentence 2: why it matters — one clear, plain-language takeaway. No jargon.
+  - Sentence 3: open question that anyone in tech can answer, not just experts. Ends with 👇
+  - Last line: 2-3 hashtags relevant to the story (e.g. #AI #Agents #LLM).
+  - Total: warm, human, snappy. Someone who reads it should think \"this person knows their stuff\"
+    but NOT \"this was written by a bot\".
 
-Examples of the RIGHT tone:
+Examples of Luca's REAL voice (copy this tone exactly):
 
-  "🤔 LangGraph just added persistent memory across agent runs.\\nFinally — stateful agents without rolling your own store. This changes how you design multi-step workflows.\\nHow are you handling agent state today? 👇"
+  "🚀 Anthropic just released a new way to structure AI agents — splitting them into planner, generator and checker roles.\nSimpler to debug, more reliable on long tasks. Honestly a smart move.\nAre you already splitting your agents by role, or still running everything in one? 👇\n#AI #Agents #Anthropic"
 
-  "RAG is not a silver bullet. 🤔\\nMost failures I see come from retrieval quality, not the LLM. Reranking alone can cut hallucinations by half.\\nWhat's your biggest RAG pain point right now? 👇"
+  "OpenAI cut GPT-4o prices again. 💰\nA few months ago this would\'ve been unthinkable — now it\'s almost routine.\nIs cost still the main blocker for you when building with AI, or has something else taken its place? 👇\n#AI #OpenAI #LLM"
 
-  "💸 GPT-4o input tokens are now 5x cheaper than 6 months ago.\\nCost is no longer the constraint — context design is. Are you still over-fetching context you don't need?\\nHow do you decide what goes into the prompt? 👇"
+  "LangGraph added persistent memory for agents. 🤔\nMeans your AI assistant can actually remember what you were working on last session — no more starting from scratch.\nHow are you handling memory in your projects today? 👇\n#AI #LangChain #Agents"
+
+  "Hugging Face just open-sourced a new reasoning model that rivals GPT-4. 🔥\nOpen source keeps closing the gap — and that\'s good for everyone building in this space.\nDo you prefer open source or commercial models for your work? 👇\n#AI #OpenSource #LLM"
 
 Return exactly this JSON:
 {{
@@ -241,7 +248,7 @@ Return exactly this JSON:
       "score": <int 1-10>,
       "title": "<story title, max 12 words>",
       "url": "<exact URL from the item list>",
-      "comment": "<post text, max 4 lines, newlines as \\n>"
+      "comment": "<post text, newlines as \\n, hashtags on last line>"
     }}
   ]
 }}"""
