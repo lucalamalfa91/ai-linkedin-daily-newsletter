@@ -151,7 +151,7 @@ def _fetch_og_meta(url: str) -> dict:
             ct = resp.headers.get("Content-Type", "")
             if "text/html" not in ct:
                 return {}
-            html = resp.read(102_400).decode("utf-8", errors="replace")
+            html = resp.read(512_000).decode("utf-8", errors="replace")
         parser = _OGParser()
         parser.feed(html)
         result: dict = {}
@@ -185,8 +185,8 @@ def _upload_linkedin_image(image_url: str, person_id: str, token: str) -> str | 
             log.warning("Unexpected Content-Type '%s' for image URL", content_type)
             return None
         image_bytes = img_resp.content
-        if len(image_bytes) > 1_048_576:
-            log.warning("Image too large (%d bytes) — skipping thumbnail", len(image_bytes))
+        if len(image_bytes) > 5_242_880:
+            log.warning("Image too large (%d bytes > 5 MB) — skipping thumbnail", len(image_bytes))
             return None
     except Exception as exc:  # noqa: BLE001
         log.warning("Image download error: %s", exc)
