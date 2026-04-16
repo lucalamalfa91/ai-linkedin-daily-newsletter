@@ -169,137 +169,165 @@ def _truncate_comment(comment: str) -> str:
     return "\n".join(content_lines + hashtag_lines)
 
 
+def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
+    """Call 1 — pure scoring at temperature=0: return ranked story list, no writing."""
+    feed_lines = "\n".join(
+        f"[{i + 1}] ({it['source']}) {it['title']} — {it['link']} — {it['summary'][:200]}"
+        for i, it in enumerate(items[:30])
+    )
+    top_sources = (
+        "OpenAI, Anthropic, LangChain, LlamaIndex, Hugging Face, Simon Willison, "
+        "The Batch, Sebastian Raschka, The Gradient, Microsoft Research, TechCrunch, VentureBeat"
+    )
+    system = (
+        "You are a content-ranking assistant. Score AI news stories for a LinkedIn audience. "
+        "Reply ONLY with valid JSON — no markdown fences, no extra text."
+    )
+    user = (
+        f"AI news from the last 24 hours:\n{feed_lines}\n\n"
+        f"Focus topics (score highest):\n{FOCUS_TOPICS}\n\n"
+        "Scoring rules (1-10):\n"
+        "  +3  Story directly covers a focus topic\n"
+        "  +2  Practical and relevant to people building or curious about AI today\n"
+        f"  +2  From a top source: {top_sources}\n"
+        "  +1  Sparks a genuine reaction from anyone in tech\n"
+        "  -3  Pure product marketing, no real content\n"
+        "  -3  Sysadmin / DevOps only, no AI angle\n"
+        "  -2  Generic \"AI is transforming X\" without concrete detail\n\n"
+        f"Return exactly {RANKED_TOP_N} candidates, best-first. "
+        "Copy URLs exactly from the list above — never invent one.\n\n"
+        '{"ranked": [{"rank": 1, "score": <1-10>, "title": "<max 12 words>", "url": "<exact URL from list>"}, ...]}'
+    )
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=400,
+        temperature=0,
+        system=system,
+        messages=[
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+    raw = "{" + msg.content[0].text.strip()
+    log.debug("Ranking raw: %s", raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        log.error("Ranking LLM returned invalid JSON: %s", raw)
+        return []
+    return data.get("ranked", [])
+
+
+def _write_post(story: dict, original: dict | None, client: anthropic.Anthropic) -> str | None:
+    """Call 2 — creative writing at temperature=0.7: generate the LinkedIn post text."""
+    summary = (original.get("summary") or "")[:300] if original else ""
+    source = original.get("source", "") if original else ""
+    system = "\n".join([
+        "You ghost-write LinkedIn posts for Luca, a senior software engineer based in Switzerland.",
+        "Audience: developers, tech managers, recruiters, and curious people — not just AI specialists.",
+        "Voice: friendly, direct, enthusiastic but never over-the-top. Like a colleague sharing something cool at coffee.",
+        "",
+        "STRICT FORMAT:",
+        "  * Exactly 2 sentences. No more.",
+        "  * Sentence 1: share the news simply. One emoji placed naturally in the sentence.",
+        "  * Sentence 2: one plain-language takeaway — why it matters or what's interesting.",
+        "  * Last line: 2-3 relevant hashtags.",
+        "  * NO closing question, NO call to action, NO lists, NO structured breakdowns.",
+        "  * Max one technical term — explain it in plain words immediately after.",
+        "  * Must NOT sound AI-generated.",
+        "",
+        "Banned words: game-changer, revolutionary, unlock, empower, leverage, synergy,",
+        "groundbreaking, orchestration layer, control loop, paradigm, delve, transformative.",
+        "",
+        "GOOD examples (copy this tone exactly):",
+        '  "OpenAI cut GPT-4o prices again. \U0001f4b0',
+        "  A few months ago this would've been unthinkable — now it's almost routine.",
+        '  #AI #OpenAI #LLM"',
+        "",
+        '  "LangGraph added persistent memory for agents. \U0001f914',
+        "  Means your AI assistant can remember what you were working on last session — no more starting from scratch.",
+        '  #AI #LangChain #Agents"',
+        "",
+        '  "\U0001f680 Anthropic released a new way to structure AI agents — splitting them into planner, generator and checker roles.',
+        "  Simpler to debug and more reliable on long tasks — honestly a smart move.",
+        '  #AI #Agents #Anthropic"',
+        "",
+        "BAD example (never write like this):",
+        '  "This groundbreaking development will revolutionize how we leverage AI synergies.',
+        "  Here are 3 key takeaways: 1) ... 2) ... 3) ... What do you think?",
+        '  #AI #Innovation #FutureOfWork"',
+        "",
+        "Reply ONLY with valid JSON — no markdown fences.",
+    ])
+    user = (
+        f"Write a LinkedIn post for this story.\n\n"
+        f"Title: {story['title']}\n"
+        f"Source: {source}\n"
+        f"URL: {story['url']}\n"
+        f"Summary: {summary}\n\n"
+        'Return: {"comment": "<2 sentences + hashtag line; use \\n for line breaks>"}'
+    )
+    msg = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=200,
+        temperature=0.7,
+        system=system,
+        messages=[
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": "{"},
+        ],
+    )
+    raw = "{" + msg.content[0].text.strip()
+    log.debug("Writing raw: %s", raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        log.error("Writing LLM returned invalid JSON: %s", raw)
+        return None
+    return data.get("comment") or None
+
+
 def select_and_comment(items: list[dict]) -> tuple[str | None, dict | None]:
-    """Use Claude Haiku to rank the top stories and generate comments.
+    """Rank stories then write a LinkedIn post for the best qualifying one.
 
     Returns the comment text and the selected story dict, or (None, None).
     """
     if not items:
         return None, None
 
-    feed_lines = "\n".join(
-        f"[{i + 1}] ({it['source']}) {it['title']} — {it['link']} — {it['summary'][:200]}"
-        for i, it in enumerate(items[:30])
-    )
-
-    system = (
-        "You ghost-write LinkedIn posts for Luca, a senior software engineer based in Switzerland. "
-        "Luca's audience is a broad professional network — developers, tech managers, recruiters, and curious people — not just AI specialists. "
-        "His voice: friendly, direct, enthusiastic but never over-the-top. Like a colleague sharing something interesting at coffee. "
-        "ONE idea per post. Short sentences. Breathe between thoughts. "
-        "Never more than one technical term per post — and when you use one, explain it in plain words immediately after. "
-        "Posts must NOT sound AI-generated. No bullet lists. No structured breakdowns. No 'here are X patterns'. No closing questions. "
-        "Banned words: game-changer, revolutionary, unlock, empower, leverage, synergy, groundbreaking, orchestration layer, control loop, paradigm. "
-        "End every post with 2-3 relevant hashtags on the last line. "
-        "Reply ONLY with valid JSON, no markdown fences."
-    )
-
-    user = f"""Today's AI items (last 24 h):
-{feed_lines}
-
-FOCUS TOPICS — stories on these score highest:
-{FOCUS_TOPICS}
-
-Task: rank the best {RANKED_TOP_N} stories and write a LinkedIn post for each.
-
-Scoring rules (1-10):
-  +3  Story directly covers a focus topic (agents, RAG, LangChain/LangGraph, context optimisation,
-      token cost, tool use, MCP, agent memory, Claude Code, agent harness, LLM capabilities,
-      goal-driven agents, reasoning models, emergent capabilities, etc.)
-  +2  Practical and relevant to people building or curious about AI today
-  +2  From a top source: OpenAI, Anthropic, LangChain, LlamaIndex, Hugging Face,
-      Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research,
-      TechCrunch, VentureBeat
-  +1  Story sparks a genuine reaction from anyone in tech
-  -3  Pure product marketing, no real content
-  -3  Sysadmin / DevOps only, no AI angle
-  -2  Generic "AI is transforming X" without concrete detail
-
-IMPORTANT:
-  - Return exactly {RANKED_TOP_N} candidates, best-first.
-  - Copy the exact URL from the list — never invent one.
-
-Post style (STRICT — Luca's personal voice):
-  - Exactly 2 sentences. No more.
-  - NO closing question. NO call to action. Just share and comment.
-  - Sentence 1: share the news simply, like telling a friend. One emoji placed naturally.
-  - Sentence 2: one plain-language takeaway — why it matters or what you find interesting about it.
-  - Last line: 2-3 hashtags relevant to the story.
-  - Total feel: warm, human, snappy. A person sharing something cool — not a bot summarising news.
-
-Examples of Luca's REAL voice (copy this tone exactly):
-
-  "🚀 Anthropic just released a new way to structure AI agents — splitting them into planner, generator and checker roles.\nSimpler to debug and more reliable on long tasks — honestly a smart move.\n#AI #Agents #Anthropic"
-
-  "OpenAI cut GPT-4o prices again. 💰\nA few months ago this would\'ve been unthinkable — now it\'s almost routine.\n#AI #OpenAI #LLM"
-
-  "LangGraph added persistent memory for agents. 🤔\nMeans your AI assistant can actually remember what you were working on last session — no more starting from scratch.\n#AI #LangChain #Agents"
-
-  "Hugging Face just open-sourced a new reasoning model that rivals GPT-4. 🔥\nOpen source keeps closing the gap — and that\'s good for everyone building in this space.\n#AI #OpenSource #LLM"
-
-Return exactly this JSON:
-{{
-  "candidates": [
-    {{
-      "rank": 1,
-      "score": <int 1-10>,
-      "title": "<story title, max 12 words>",
-      "url": "<exact URL from the item list>",
-      "comment": "<2 sentences + hashtag line, newlines as \\n>"
-    }}
-  ]
-}}"""
-
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-    msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=1200,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
 
-    raw = msg.content[0].text.strip()
-    log.debug("LLM raw response: %s", raw)
-
-    if raw.startswith("```"):
-        lines = raw.split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        raw = "\n".join(lines).strip()
-
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        log.error("LLM returned invalid JSON: %s", raw)
+    ranked = _rank_stories(items, client)
+    if not ranked:
         return None, None
 
-    candidates = data.get("candidates", [])
-    if not candidates:
-        log.error("LLM returned no candidates")
-        return None, None
-
-    for candidate in candidates:
+    for candidate in ranked:
         score = candidate.get("score", 0)
         url = normalize_url(candidate.get("url", ""))
         title = candidate.get("title", "")
-        comment = candidate.get("comment", "")
         rank = candidate.get("rank", "?")
 
         log.info("Candidate rank=%s score=%d url_valid=%s title=%s", rank, score, _is_valid_url(url), title)
 
         if score < MIN_SCORE:
-            log.info("  → skipped (score %d < threshold %d)", score, MIN_SCORE)
+            log.info("  -> skipped (score %d < threshold %d)", score, MIN_SCORE)
             continue
         if not _is_valid_url(url):
-            log.warning("  → skipped (invalid URL '%s'), trying next", url)
+            log.warning("  -> skipped (invalid URL '%s'), trying next", url)
             continue
 
         candidate["url"] = url
-        candidate["comment"] = _truncate_comment(comment)
+        original = next((it for it in items if it["link"] == url), None)
+
+        log.info("Writing post for rank=%s score=%d", rank, score)
+        comment = _write_post(candidate, original, client)
+        if not comment:
+            log.warning("  -> failed to write post, trying next candidate")
+            continue
+
+        comment = _truncate_comment(comment)
         log.info("Selected candidate rank=%s score=%d", rank, score)
-        return candidate["comment"], candidate
+        return comment, candidate
 
     log.info("No candidate passed validation (threshold=%d)", MIN_SCORE)
     return None, None
@@ -371,7 +399,7 @@ def main() -> None:
         comment, story = select_and_comment(items)
 
         if not comment:
-            msg = f"📰 <b>Daily AI Post</b>: no qualifying news today (threshold={MIN_SCORE}). Skipping."
+            msg = f"<b>Daily AI Post</b>: no qualifying news today (threshold={MIN_SCORE}). Skipping."
             log.info("No qualifying news — skipping LinkedIn post.")
             send_telegram(msg, tg_token, tg_chat)
             return
@@ -395,7 +423,7 @@ def main() -> None:
             f"🆔 Post ID: {post_id}"
         )
         send_telegram(tg_msg, tg_token, tg_chat)
-        log.info("Pipeline completed successfully ✅")
+        log.info("Pipeline completed successfully")
 
     except Exception as exc:
         log.exception("Pipeline failed")
