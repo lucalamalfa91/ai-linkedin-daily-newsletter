@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Automated daily LinkedIn AI news pipeline that:
-1. Fetches AI news from RSS feeds (ArXiv, Hugging Face, Anthropic, DeepMind, Papers With Code)
-2. Uses Claude Haiku to select the best story from the last 24 hours and generate a LinkedIn comment
+Automated weekly LinkedIn AI news pipeline that:
+1. Fetches AI news from RSS feeds (14 sources: OpenAI, Anthropic, DeepMind, LangChain, Hugging Face, and more)
+2. Uses Claude Haiku to rank the best stories from the last 7 days, then Claude Sonnet to write the LinkedIn post
 3. Publishes the post to LinkedIn via REST API
 4. Sends notifications to Telegram
 
@@ -46,12 +46,12 @@ The script requires these environment variables (defined in `.env` locally, or a
 
 **Single-file pipeline** (`daily_post.py`):
 
-1. **`fetch_feeds()`** — Fetches RSS feeds, filters items from last 24h, returns structured list
-2. **`select_and_comment()`** — Calls Claude Haiku with system+user prompt, returns JSON with score, title, url, comment
+1. **`fetch_feeds()`** — Fetches RSS feeds, filters items from last 7 days, returns list sorted newest-first
+2. **`select_and_comment()`** — Calls Claude Haiku (ranking) + Claude Sonnet (writing), returns best post
 3. **`publish_linkedin()`** — Posts to LinkedIn REST API using `X-Restli-Protocol-Version: 2.0.0` and `LinkedIn-Version: 202408`
 4. **`send_telegram()`** — Best-effort notification (doesn't fail pipeline on error)
 
-**Content scoring**: Claude Haiku scores stories 1-10 on novelty, technical impact, and broad relevance. Only scores ≥6 get published. This prevents low-quality posts.
+**Content scoring**: Claude Haiku scores stories 1-10 across 4 dimensions: Content Quality, Topic Relevance, Trend & Timing, LinkedIn Profile Value. Only scores ≥6 get published.
 
 **Post format**: LinkedIn post with article link + comment (max 2 lines, 3 only if score ≥9):
 - Technical but accessible to everyone (not just experts)
@@ -86,7 +86,8 @@ Defined in `RSS_FEEDS` dict (daily_post.py:26-32):
 
 ## LLM Integration
 
-Uses `claude-haiku-4-5-20251001` with max_tokens=350. Response must be valid JSON (no markdown fences). The system prompt enforces technical tone for senior AI architect audience.
+- **Ranking** (`_rank_stories`): `claude-haiku-4-5-20251001`, max_tokens=500, temperature=0 — structured scoring
+- **Writing** (`_write_post`): `claude-sonnet-4-6`, max_tokens=200, temperature=0.7 — creative post generation
 
 ## Dependencies
 
