@@ -230,8 +230,8 @@ def _upload_linkedin_image(image_url: str, person_id: str, token: str) -> str | 
 
 
 def fetch_feeds() -> list[dict]:
-    """Fetch all RSS feeds and return items published in the last 24 hours."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    """Fetch all RSS feeds and return items published in the last 7 days, sorted newest-first."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     items: list[dict] = []
 
     for source, url in RSS_FEEDS.items():
@@ -262,7 +262,8 @@ def fetch_feeds() -> list[dict]:
         except Exception as exc:  # noqa: BLE001
             log.warning("Failed to fetch %s: %s", source, exc)
 
-    log.info("Found %d items in the last 24 h", len(items))
+    items.sort(key=lambda x: x["published"], reverse=True)
+    log.info("Found %d items in the last 7 days", len(items))
     return items
 
 
@@ -308,7 +309,7 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
     trending_topics = _detect_trending_topics(items)
     feed_lines = "\n".join(
         f"[{i + 1}] ({it['source']}) {it['title']} — {it['link']} — {it['summary'][:200]}"
-        for i, it in enumerate(items[:30])
+        for i, it in enumerate(items[:40])
     )
     top_sources = (
         "OpenAI, Anthropic, Google DeepMind, LangChain, LlamaIndex, Hugging Face, "
@@ -423,7 +424,7 @@ def _write_post(story: dict, original: dict | None, client: anthropic.Anthropic)
         'Return: {"comment": "<2 sentences + hashtag line; use \\n for line breaks>"}'
     )
     msg = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-sonnet-4-6",
         max_tokens=200,
         temperature=0.7,
         system=system,
@@ -561,8 +562,8 @@ def main() -> None:
         comment, story = select_and_comment(items)
 
         if not comment:
-            msg = f"<b>Daily AI Post</b>: no qualifying news today (threshold={MIN_SCORE}). Skipping."
-            log.info("No qualifying news — skipping LinkedIn post.")
+            msg = f"<b>Weekly AI Post</b>: no qualifying news this week (threshold={MIN_SCORE}/10 across 7 days). Skipping — consider checking feed sources."
+            log.info("No qualifying news in 7 days — skipping LinkedIn post.")
             send_telegram(msg, tg_token, tg_chat)
             return
 
