@@ -344,9 +344,8 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
         "You are a content-ranking assistant. Score AI news stories for a LinkedIn audience. "
         "Reply ONLY with valid JSON — no markdown fences, no extra text."
     )
-    user = (
-        f"AI news from the last 24 hours:\n{feed_lines}\n\n"
-        f"Topics trending across multiple sources right now: {trending_topics}\n\n"
+    # Static part: criteria that never change between runs — eligible for prompt caching
+    static_context = (
         f"Focus topics (always score highest when covered):\n{FOCUS_TOPICS}\n\n"
         "Scoring rubric — start each story at 0, apply all applicable rules, cap at 10:\n"
         "\n"
@@ -364,7 +363,7 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
         "  -3  No meaningful AI angle (pure sysadmin, DevOps, or unrelated tech)\n"
         "\n"
         "TREND & TIMING\n"
-        "  +2  Topic appears in the trending list above (covered by multiple sources today)\n"
+        "  +2  Topic appears in the trending list (covered by multiple sources today)\n"
         "  +1  Topic is at the center of current AI discourse: agentic AI, reasoning models,\n"
         "      multimodal, cost reduction, AI coding, local/on-device AI\n"
         "  -1  Story is clearly old news already widely covered days ago\n"
@@ -379,13 +378,24 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
         "Copy URLs exactly from the list above — never invent one.\n\n"
         '{"ranked": [{"rank": 1, "score": <1-10>, "title": "<max 12 words>", "url": "<exact URL from list>"}, ...]}'
     )
+    # Dynamic part: changes every run (feed items + today's trending topics)
+    dynamic_context = (
+        f"AI news from the last 24 hours:\n{feed_lines}\n\n"
+        f"Topics trending across multiple sources right now: {trending_topics}"
+    )
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=500,
         temperature=0,
         system=system,
         messages=[
-            {"role": "user", "content": user},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": static_context, "cache_control": {"type": "ephemeral"}},
+                    {"type": "text", "text": dynamic_context},
+                ],
+            },
             {"role": "assistant", "content": "{"},
         ],
     )
@@ -452,7 +462,7 @@ def _write_post(story: dict, original: dict | None, client: anthropic.Anthropic)
         model="claude-sonnet-4-6",
         max_tokens=200,
         temperature=0.7,
-        system=system,
+        system=[{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}],
         messages=[
             {"role": "user", "content": user},
         ],
