@@ -45,6 +45,12 @@ RSS_FEEDS = {
     # Industry news with technical depth
     "TechCrunch AI":      "https://techcrunch.com/category/artificial-intelligence/feed/",
     "VentureBeat AI":     "https://venturebeat.com/category/ai/feed/",
+    # Prompt engineering & LLM efficiency — token optimisation focus
+    "Chip Huyen":         "https://huyenchip.com/feed.xml",
+    "Eugene Yan":         "https://eugeneyan.com/feed.xml",
+    "Lilian Weng":        "https://lilianweng.github.io/index.xml",
+    "Interconnects":      "https://www.interconnects.ai/feed",
+    "Hamel Husain":       "https://hamel.dev/feed.xml",
 }
 
 # Topics that get a scoring bonus — used in the prompt
@@ -64,6 +70,14 @@ FOCUS_TOPICS = (
     # RAG & retrieval
     "RAG (retrieval-augmented generation), vector databases, reranking, hybrid search, "
     "context window optimisation, prompt compression, KV-cache, "
+    # Token & prompt optimisation — new focus area
+    "token optimisation, token budget, token saving, prompt compression, "
+    "prompt engineering, prompt design, system prompt optimisation, prompt templates, "
+    "few-shot prompting, zero-shot prompting, chain-of-thought prompting, "
+    "structured output, JSON mode, constrained generation, output formatting, "
+    "LLM inference cost, API cost reduction, cost-per-token, batching strategies, "
+    "prompt caching, KV-cache reuse, speculative decoding, "
+    "LLMLingua, Selective Context, AutoCompressor, prompt distillation, "
     # Cost & efficiency
     "token cost reduction, inference cost, quantisation, "
     # Tooling & protocols
@@ -313,7 +327,8 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
     )
     top_sources = (
         "OpenAI, Anthropic, Google DeepMind, LangChain, LlamaIndex, Hugging Face, "
-        "Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research"
+        "Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research, "
+        "Chip Huyen, Eugene Yan, Lilian Weng, Interconnects, Hamel Husain"
     )
     system = (
         "You are a content-ranking assistant. Score AI news stories for a LinkedIn audience. "
