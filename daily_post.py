@@ -45,17 +45,33 @@ RSS_FEEDS = {
     # Industry news with technical depth
     "TechCrunch AI":      "https://techcrunch.com/category/artificial-intelligence/feed/",
     "VentureBeat AI":     "https://venturebeat.com/category/ai/feed/",
+    # Prompt engineering & LLM efficiency — token optimisation focus
+    "Chip Huyen":         "https://huyenchip.com/feed.xml",
+    "Eugene Yan":         "https://eugeneyan.com/feed.xml",
+    "Lilian Weng":        "https://lilianweng.github.io/index.xml",
+    "Interconnects":      "https://www.interconnects.ai/feed",
+    "Hamel Husain":       "https://hamel.dev/feed.xml",
 }
 
 # Topics that get a scoring bonus — used in the prompt
 FOCUS_TOPICS = (
-    # Agentic systems & orchestration
+    # Agentic systems & orchestration — explicit harness focus
     "AI agents, agent orchestration, multi-agent systems, "
-    "agent harness, agent scaffolding, agent test harness, agent evaluation frameworks, "
+    "agent harness, agent test harness, agent scaffolding, agent evaluation frameworks, "
+    "agent reliability, agent robustness, agent observability, agent tracing, "
     "goal-driven agents, goal-conditioned agents, task planning agents, "
     "autonomous agents, self-improving agents, recursive self-improvement, "
     "Claude Code, OpenAI Codex / Operator, "
     "LangChain, LangGraph, LlamaIndex, AutoGen, CrewAI, "
+    # AI security & safety — red-teaming, attacks, governance
+    "AI security, LLM security, model security, "
+    "prompt injection, indirect prompt injection, jailbreaking, adversarial prompts, "
+    "red-teaming, red team, LLM red team, adversarial evaluation, "
+    "AI safety, model safety, AI alignment, AI risk, "
+    "data poisoning, training data attacks, backdoor attacks, "
+    "AI governance, AI regulation, EU AI Act, responsible AI, "
+    "model robustness, out-of-distribution, hallucination detection, "
+    "guardrails, content moderation, output filtering, "
     # LLM capabilities & reasoning
     "LLM capabilities, emergent capabilities, reasoning models, chain-of-thought, "
     "tree-of-thought, reflection, self-critique, model self-evaluation, "
@@ -64,6 +80,14 @@ FOCUS_TOPICS = (
     # RAG & retrieval
     "RAG (retrieval-augmented generation), vector databases, reranking, hybrid search, "
     "context window optimisation, prompt compression, KV-cache, "
+    # Token & prompt optimisation — new focus area
+    "token optimisation, token budget, token saving, prompt compression, "
+    "prompt engineering, prompt design, system prompt optimisation, prompt templates, "
+    "few-shot prompting, zero-shot prompting, chain-of-thought prompting, "
+    "structured output, JSON mode, constrained generation, output formatting, "
+    "LLM inference cost, API cost reduction, cost-per-token, batching strategies, "
+    "prompt caching, KV-cache reuse, speculative decoding, "
+    "LLMLingua, Selective Context, AutoCompressor, prompt distillation, "
     # Cost & efficiency
     "token cost reduction, inference cost, quantisation, "
     # Tooling & protocols
@@ -313,7 +337,8 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
     )
     top_sources = (
         "OpenAI, Anthropic, Google DeepMind, LangChain, LlamaIndex, Hugging Face, "
-        "Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research"
+        "Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research, "
+        "Chip Huyen, Eugene Yan, Lilian Weng, Interconnects, Hamel Husain"
     )
     system = (
         "You are a content-ranking assistant. Score AI news stories for a LinkedIn audience. "
