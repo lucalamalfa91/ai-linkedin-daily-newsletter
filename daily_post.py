@@ -55,13 +55,23 @@ RSS_FEEDS = {
 
 # Topics that get a scoring bonus — used in the prompt
 FOCUS_TOPICS = (
-    # Agentic systems & orchestration
+    # Agentic systems & orchestration — explicit harness focus
     "AI agents, agent orchestration, multi-agent systems, "
-    "agent harness, agent scaffolding, agent test harness, agent evaluation frameworks, "
+    "agent harness, agent test harness, agent scaffolding, agent evaluation frameworks, "
+    "agent reliability, agent robustness, agent observability, agent tracing, "
     "goal-driven agents, goal-conditioned agents, task planning agents, "
     "autonomous agents, self-improving agents, recursive self-improvement, "
     "Claude Code, OpenAI Codex / Operator, "
     "LangChain, LangGraph, LlamaIndex, AutoGen, CrewAI, "
+    # AI security & safety — red-teaming, attacks, governance
+    "AI security, LLM security, model security, "
+    "prompt injection, indirect prompt injection, jailbreaking, adversarial prompts, "
+    "red-teaming, red team, LLM red team, adversarial evaluation, "
+    "AI safety, model safety, AI alignment, AI risk, "
+    "data poisoning, training data attacks, backdoor attacks, "
+    "AI governance, AI regulation, EU AI Act, responsible AI, "
+    "model robustness, out-of-distribution, hallucination detection, "
+    "guardrails, content moderation, output filtering, "
     # LLM capabilities & reasoning
     "LLM capabilities, emergent capabilities, reasoning models, chain-of-thought, "
     "tree-of-thought, reflection, self-critique, model self-evaluation, "
