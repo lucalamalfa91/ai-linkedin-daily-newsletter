@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Automated weekly LinkedIn AI news pipeline that:
-1. Fetches AI news from RSS feeds (14 sources: OpenAI, Anthropic, DeepMind, LangChain, Hugging Face, and more)
+Automated LinkedIn AI news pipeline that:
+1. Fetches AI news from RSS feeds (19 sources: OpenAI, Anthropic, DeepMind, LangChain, Hugging Face, and more)
 2. Uses Claude Haiku to rank the best stories from the last 7 days, then Claude Sonnet to write the LinkedIn post
 3. Publishes the post to LinkedIn via REST API
 4. Sends notifications to Telegram
 
-The entire pipeline runs in a single script (`daily_post.py`) with no external configuration files.
+The entire pipeline runs in a single script (`post.py`) with no external configuration files.
 
 ## Environment Setup
 
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 ```bash
 # Ensure .env file exists with required variables (see below)
-python daily_post.py
+python post.py
 ```
 
 The script requires these environment variables (defined in `.env` locally, or as secrets in CI):
@@ -44,7 +44,7 @@ The script requires these environment variables (defined in `.env` locally, or a
 
 ## Architecture
 
-**Single-file pipeline** (`daily_post.py`):
+**Single-file pipeline** (`post.py`):
 
 1. **`fetch_feeds()`** — Fetches RSS feeds, filters items from last 7 days, returns list sorted newest-first
 2. **`select_and_comment()`** — Calls Claude Haiku (ranking) + Claude Sonnet (writing), returns best post
@@ -69,7 +69,7 @@ The script requires these environment variables (defined in `.env` locally, or a
 
 ## RSS Feed Sources
 
-Defined in `RSS_FEEDS` dict (daily_post.py:26-32):
+Defined in `RSS_FEEDS` dict (post.py:26-32):
 - ArXiv AI (cs.AI category)
 - Hugging Face blog
 - Anthropic blog

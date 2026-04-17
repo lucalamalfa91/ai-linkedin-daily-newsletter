@@ -1,6 +1,6 @@
-# AI LinkedIn Daily Newsletter
+# AI LinkedIn Newsletter
 
-Automated LinkedIn AI news pipeline that discovers, curates, and publishes the best AI story of the week — with full editorial quality control powered by Claude.
+Automated LinkedIn AI news pipeline that discovers, curates, and publishes the best AI story — with full editorial quality control powered by Claude.
 
 ---
 
@@ -16,7 +16,7 @@ Automated LinkedIn AI news pipeline that discovers, curates, and publishes the b
 8. **Publishes** the post to LinkedIn via REST API (only if story score ≥ 6/10)
 9. **Notifies** via Telegram — success with full post preview, or error with exception detail
 
-The entire pipeline runs as a single Python script (`daily_post.py`) with no external configuration files.
+The entire pipeline runs as a single Python script (`post.py`) with no external configuration files.
 
 ---
 
@@ -249,7 +249,7 @@ When an image is available:
 
 5. **Run the pipeline**
    ```bash
-   python daily_post.py
+   python post.py
    ```
 
 ---
@@ -277,7 +277,7 @@ All 5 variables are required. The script calls `require_env()` at startup and ex
 
 ## GitHub Actions Setup
 
-The workflow in `.github/workflows/daily-post.yml` runs the pipeline on a schedule.
+The workflow in `.github/workflows/post.yml` runs the pipeline on a schedule.
 
 ### 1. Add Repository Secrets
 
@@ -296,7 +296,7 @@ The workflow file is already present. GitHub Actions will run it automatically o
 ### 3. Manual Trigger
 
 - Go to the **Actions** tab
-- Select "Daily LinkedIn AI Post"
+- Select "LinkedIn AI Post"
 - Click **Run workflow**
 
 ---
@@ -335,8 +335,8 @@ If all candidates score below 6/10:
 .
 ├── .github/
 │   └── workflows/
-│       └── daily-post.yml    # GitHub Actions schedule & runner
-├── daily_post.py             # Entire pipeline — single script, ~680 lines
+│       └── post.yml    # GitHub Actions schedule & runner
+├── post.py             # Entire pipeline — single script, ~680 lines
 ├── requirements.txt          # anthropic, feedparser, requests
 ├── .env                      # Local secrets (gitignored)
 ├── .gitignore
@@ -355,7 +355,7 @@ The script strips markdown code fences from LLM responses automatically. If the 
 Your `LINKEDIN_ACCESS_TOKEN` has expired. LinkedIn OAuth tokens are short-lived. Generate a new token from the LinkedIn Developer Portal and update the GitHub Secret.
 
 ### `LinkedIn error 422` or `422 Unprocessable Entity`
-Usually a malformed payload or an API version mismatch. Check `LINKEDIN_VERSION` in `daily_post.py` (currently `202603`) and compare against the [LinkedIn API changelog](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
+Usually a malformed payload or an API version mismatch. Check `LINKEDIN_VERSION` in `post.py` (currently `202603`) and compare against the [LinkedIn API changelog](https://learn.microsoft.com/en-us/linkedin/marketing/versioning).
 
 ### `Missing environment variable`
 Check your `.env` file locally or the repository Secrets in GitHub Actions. All 5 variables must be present — the script will list which ones are missing.

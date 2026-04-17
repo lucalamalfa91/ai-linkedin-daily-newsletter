@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Daily LinkedIn AI News Post — automated pipeline.
+"""LinkedIn AI News Post — automated pipeline.
 
 Flow: fetch RSS feeds → Claude Haiku ranks top stories → pick first with valid URL → publish LinkedIn → notify Telegram.
 """
@@ -175,7 +175,7 @@ def _fetch_og_meta(url: str) -> dict:
                 self.description = content
 
     try:
-        req = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; daily-post-bot/1.0)"})
+        req = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ai-post-bot/1.0)"})
         with urlopen(req, timeout=10) as resp:
             ct = resp.headers.get("Content-Type", "")
             if "text/html" not in ct:
@@ -268,7 +268,7 @@ def fetch_feeds() -> list[dict]:
             log.info("Fetching %s ...", source)
             feed = feedparser.parse(
                 url,
-                request_headers={"User-Agent": "Mozilla/5.0 (compatible; daily-post-bot/1.0)"},
+                request_headers={"User-Agent": "Mozilla/5.0 (compatible; ai-post-bot/1.0)"},
             )
             for entry in feed.entries:
                 pub_tuple = entry.get("published_parsed") or entry.get("updated_parsed")
@@ -385,7 +385,7 @@ def _rank_stories(items: list[dict], client: anthropic.Anthropic) -> list[dict]:
     )
     # Dynamic part: changes every run (feed items + today's trending topics)
     dynamic_context = (
-        f"AI news from the last 24 hours:\n{feed_lines}\n\n"
+        f"AI news from the last 7 days:\n{feed_lines}\n\n"
         f"Topics trending across multiple sources right now: {trending_topics}"
     )
     msg = client.messages.create(
@@ -666,7 +666,7 @@ def main() -> None:
         comment, story = select_and_comment(items)
 
         if not comment:
-            msg = f"<b>Weekly AI Post</b>: no qualifying news this week (threshold={MIN_SCORE}/10 across 7 days). Skipping — consider checking feed sources."
+            msg = f"<b>AI LinkedIn Post</b>: no qualifying news (threshold={MIN_SCORE}/10 across 7 days). Skipping — consider checking feed sources."
             log.info("No qualifying news in 7 days — skipping LinkedIn post.")
             send_telegram(msg, tg_token, tg_chat)
             return
@@ -695,7 +695,7 @@ def main() -> None:
 
     except Exception as exc:
         log.exception("Pipeline failed")
-        send_telegram(f"❌ <b>Daily AI Post FAILED</b>\n\n{exc}", tg_token, tg_chat)
+        send_telegram(f"❌ <b>AI LinkedIn Post FAILED</b>\n\n{exc}", tg_token, tg_chat)
         sys.exit(1)
 
 
