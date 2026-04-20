@@ -36,6 +36,8 @@ RSS_FEEDS = {
     # Agentic AI & frameworks — core focus
     "LangChain Blog":     "https://blog.langchain.dev/rss/",
     "LlamaIndex Blog":    "https://www.llamaindex.ai/blog/rss.xml",
+    "CrewAI Blog":        "https://www.crewai.com/blog/rss.xml",
+    "Haystack Blog":      "https://haystack.deepset.ai/blog/rss.xml",
     "Hugging Face":       "https://huggingface.co/blog/feed.xml",
     # Practitioner / engineering deep-dives — open access, concise content
     "Simon Willison":     "https://simonwillison.net/atom/everything/",
@@ -63,7 +65,7 @@ FOCUS_TOPICS = (
     "goal-driven agents, goal-conditioned agents, task planning agents, "
     "autonomous agents, self-improving agents, recursive self-improvement, "
     "Claude Code, OpenAI Codex / Operator, "
-    "LangChain, LangGraph, LlamaIndex, AutoGen, CrewAI, "
+    "LangChain, LangGraph, LlamaIndex, AutoGen, CrewAI, DSPy, LangSmith, Haystack, "
     # AI security & safety — red-teaming, attacks, governance
     "AI security, LLM security, model security, "
     "prompt injection, indirect prompt injection, jailbreaking, adversarial prompts, "
@@ -78,6 +80,14 @@ FOCUS_TOPICS = (
     "circuits, superposition, features, sparse autoencoders, SAE, "
     "model internals, attention heads, MLP layers, residual stream, "
     "Chris Olah, Anthropic interpretability, transformer circuits, "
+    # Frameworks & tooling — observability, optimization, pipelines
+    "DSPy, prompt optimization, few-shot optimization, compiled prompts, "
+    "LangSmith, LLM observability, LLM tracing, LLM evaluation, prompt monitoring, "
+    "Haystack, deepset, document QA pipeline, retrieval pipeline, "
+    # Multimodal AI
+    "native multimodality, natively multimodal, vision-language model, VLM, "
+    "multimodal agents, multimodal reasoning, image + text, audio + text, "
+    "GPT-4o, Gemini multimodal, Claude multimodal, multimodal LLM, "
     # LLM capabilities & reasoning
     "LLM capabilities, emergent capabilities, reasoning models, chain-of-thought, "
     "tree-of-thought, reflection, self-critique, model self-evaluation, "
