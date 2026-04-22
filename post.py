@@ -112,6 +112,26 @@ FOCUS_TOPICS = (
     "agent memory, agent skills / capabilities"
 )
 
+# ── Category priorities (1 = highest) ────────────────────────────────────────
+SOURCE_CATEGORIES = {
+    "LLM Efficiency & Prompt Engineering": [
+        "Chip Huyen", "Eugene Yan", "Lilian Weng", "Interconnects", "Hamel Husain",
+    ],
+    "Agentic AI & Frameworks": [
+        "LangChain Blog", "LlamaIndex Blog", "CrewAI Blog", "Haystack Blog", "Hugging Face",
+    ],
+    "AI Labs": [
+        "OpenAI", "Anthropic", "Google DeepMind", "Google AI Blog",
+    ],
+    "Practitioners & Researchers": [
+        "Simon Willison", "The Batch (deeplearning.ai)", "Sebastian Raschka",
+        "The Gradient", "Microsoft Research",
+    ],
+    "Industry News": [
+        "TechCrunch AI", "VentureBeat AI",
+    ],
+}
+
 MIN_SCORE = 6
 RANKED_TOP_N = 5
 
@@ -543,10 +563,11 @@ def _rank_stories(
         f"[{i + 1}] ({it['source']}) {it['title']} — {it['link']} — {it['summary'][:200]}"
         for i, it in enumerate(items[:40])
     )
-    top_sources = (
-        "OpenAI, Anthropic, Google DeepMind, LangChain, LlamaIndex, Hugging Face, "
-        "Simon Willison, The Batch, Sebastian Raschka, The Gradient, Microsoft Research, "
-        "Chip Huyen, Eugene Yan, Lilian Weng, Interconnects, Hamel Husain"
+    llm_eff_sources   = ", ".join(SOURCE_CATEGORIES["LLM Efficiency & Prompt Engineering"])
+    agentic_sources   = ", ".join(SOURCE_CATEGORIES["Agentic AI & Frameworks"])
+    ai_lab_sources    = ", ".join(SOURCE_CATEGORIES["AI Labs"])
+    other_sources     = ", ".join(
+        SOURCE_CATEGORIES["Practitioners & Researchers"] + SOURCE_CATEGORIES["Industry News"]
     )
     system = (
         "You are a content-ranking assistant. Score AI news stories for a LinkedIn audience. "
@@ -554,12 +575,21 @@ def _rank_stories(
     )
     # Static part: criteria that never change between runs — eligible for prompt caching
     static_context = (
+        "CATEGORY PRIORITY (most important → least important):\n"
+        "  1. LLM Efficiency & Prompt Engineering\n"
+        "  2. Agentic AI & Frameworks\n"
+        "  3. AI Labs\n"
+        "  4. Practitioners & Researchers\n"
+        "  5. Industry News\n\n"
         f"Focus topics (always score highest when covered):\n{focus_topics}\n\n"
         "Scoring rubric — start each story at 0, apply all applicable rules, cap at 10:\n"
         "\n"
         "CONTENT QUALITY\n"
         "  +2  Concrete announcement: model/product release, open-source launch, measurable benchmark\n"
-        f"  +2  From a top-tier source: {top_sources}\n"
+        f"  +3  From an LLM Efficiency & Prompt Engineering source (priority 1): {llm_eff_sources}\n"
+        f"  +2  From an Agentic AI & Frameworks source (priority 2): {agentic_sources}\n"
+        f"  +1  From an AI Labs source (priority 3): {ai_lab_sources}\n"
+        f"  +1  From another quality source: {other_sources}\n"
         "  +1  Technical but accessible — a non-expert can understand why it matters\n"
         "  -2  Pure opinion or commentary with no concrete news behind it\n"
         "  -3  Pure product marketing, no substantive technical content\n"
@@ -567,6 +597,7 @@ def _rank_stories(
         "\n"
         "TOPIC RELEVANCE\n"
         "  +3  Directly covers a focus topic listed above\n"
+        "  +2  Covers LLM efficiency, prompt engineering, or agent frameworks specifically\n"
         "  +1  Clearly AI-relevant but tangential to focus topics\n"
         "  -3  No meaningful AI angle (pure sysadmin, DevOps, or unrelated tech)\n"
         "\n"
