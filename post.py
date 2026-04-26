@@ -10,6 +10,7 @@ import logging
 import os
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from urllib.parse import quote
@@ -305,38 +306,49 @@ def _upload_linkedin_image(image_url: str, person_id: str, token: str) -> str | 
     return image_urn
 
 
+def _fetch_one(source: str, url: str, cutoff: datetime) -> list[dict]:
+    """Fetch a single RSS feed. Returns [] on any failure."""
+    items = []
+    try:
+        log.info("Fetching %s ...", source)
+        feed = feedparser.parse(
+            url,
+            request_headers={"User-Agent": "Mozilla/5.0 (compatible; ai-post-bot/1.0)"},
+        )
+        for entry in feed.entries:
+            pub_tuple = entry.get("published_parsed") or entry.get("updated_parsed")
+            if not pub_tuple:
+                continue
+            pub_dt = datetime(*pub_tuple[:6], tzinfo=timezone.utc)
+            if pub_dt < cutoff:
+                continue
+            link = normalize_url(entry.get("link", ""))
+            items.append(
+                {
+                    "source": source,
+                    "title": entry.get("title", "").strip(),
+                    "link": link,
+                    "summary": (entry.get("summary", "") or "")[:400],
+                    "published": pub_dt.isoformat(),
+                }
+            )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Failed to fetch %s: %s", source, exc)
+    return items
+
+
 def fetch_feeds() -> list[dict]:
-    """Fetch all RSS feeds and return items published in the last 7 days, sorted newest-first."""
+    """Fetch all RSS feeds concurrently and return items from the last 7 days, sorted newest-first."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     items: list[dict] = []
 
-    for source, url in RSS_FEEDS.items():
-        try:
-            log.info("Fetching %s ...", source)
-            feed = feedparser.parse(
-                url,
-                request_headers={"User-Agent": "Mozilla/5.0 (compatible; ai-post-bot/1.0)"},
-            )
-            for entry in feed.entries:
-                pub_tuple = entry.get("published_parsed") or entry.get("updated_parsed")
-                if not pub_tuple:
-                    continue
-                pub_dt = datetime(*pub_tuple[:6], tzinfo=timezone.utc)
-                if pub_dt < cutoff:
-                    continue
-                raw_link = entry.get("link", "")
-                link = normalize_url(raw_link)
-                items.append(
-                    {
-                        "source": source,
-                        "title": entry.get("title", "").strip(),
-                        "link": link,
-                        "summary": (entry.get("summary", "") or "")[:400],
-                        "published": pub_dt.isoformat(),
-                    }
-                )
-        except Exception as exc:  # noqa: BLE001
-            log.warning("Failed to fetch %s: %s", source, exc)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(_fetch_one, source, url, cutoff): source
+            for source, url in RSS_FEEDS.items()
+        }
+        for future in as_completed(futures):
+            items.extend(future.result())
 
     items.sort(key=lambda x: x["published"], reverse=True)
     log.info("Found %d items in the last 7 days", len(items))
@@ -822,9 +834,23 @@ def select_and_comment(
     if not ranked:
         return None, None
 
+    # Pre-fetch og:image for all qualifying candidates in parallel to avoid sequential timeouts.
+    valid_candidates = []
+    for c in ranked:
+        url = normalize_url(c.get("url", ""))
+        if c.get("score", 0) >= MIN_SCORE and _is_valid_url(url):
+            c["url"] = url
+            valid_candidates.append(c)
+
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        og_futures = {executor.submit(_fetch_og_meta, c["url"]): c["url"] for c in valid_candidates}
+        og_map: dict[str, dict] = {}
+        for future in as_completed(og_futures):
+            og_map[og_futures[future]] = future.result()
+
     for candidate in ranked:
         score = candidate.get("score", 0)
-        url = normalize_url(candidate.get("url", ""))
+        url = candidate.get("url", "")
         title = candidate.get("title", "")
         rank = candidate.get("rank", "?")
 
@@ -837,10 +863,9 @@ def select_and_comment(
             log.warning("  -> skipped (invalid URL '%s'), trying next", url)
             continue
 
-        candidate["url"] = url
         original = next((it for it in items if it["link"] == url), None)
 
-        og = _fetch_og_meta(url)
+        og = og_map.get(url, {})
         if not og.get("image"):
             log.info("  -> skipped (no thumbnail available), trying next")
             continue
