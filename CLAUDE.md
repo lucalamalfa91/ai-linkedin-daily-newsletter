@@ -5,12 +5,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Automated LinkedIn AI news pipeline that:
-1. Fetches AI news from RSS feeds (19 sources: OpenAI, Anthropic, DeepMind, LangChain, Hugging Face, and more)
+1. Fetches AI news from RSS feeds (30 sources: OpenAI, Anthropic, DeepMind, LangChain, Hugging Face, and more)
 2. Uses Claude Haiku to rank the best stories from the last 7 days, then Claude Sonnet to write the LinkedIn post
-3. Publishes the post to LinkedIn via REST API
+3. Sends a Telegram preview with inline approval buttons — publishes to LinkedIn only after human confirmation
 4. Sends notifications to Telegram
 
-The entire pipeline runs in a single script (`post.py`) with no external configuration files.
+Entry point: `main.py`. All constants and feed definitions live in `config.py`.
 
 ## Environment Setup
 
@@ -32,8 +32,16 @@ pip install -r requirements.txt
 
 ```bash
 # Ensure .env file exists with required variables (see below)
-python post.py
+python main.py
+
+# Skip the Telegram approval step and publish immediately
+python main.py --no-confirm
+
+# Use a custom focus topic
+python main.py --topic "RAG and vector databases"
 ```
+
+Setting `SKIP_CONFIRM=1` in the environment has the same effect as `--no-confirm`.
 
 The script requires these environment variables (defined in `.env` locally, or as secrets in CI):
 - `ANTHROPIC_API_KEY` — Claude API key for content generation
@@ -44,14 +52,22 @@ The script requires these environment variables (defined in `.env` locally, or a
 
 ## Architecture
 
-**Single-file pipeline** (`post.py`):
+**Multi-agent pipeline** (`main.py` orchestrates `agents/` and `utils/`):
 
-1. **`fetch_feeds()`** — Fetches RSS feeds, filters items from last 7 days, returns list sorted newest-first
-2. **`select_and_comment()`** — Calls Claude Haiku (ranking) + Claude Sonnet (writing), returns best post
-3. **`publish_linkedin()`** — Posts to LinkedIn REST API using `X-Restli-Protocol-Version: 2.0.0` and `LinkedIn-Version: 202408`
-4. **`send_telegram()`** — Best-effort notification (doesn't fail pipeline on error)
+1. **`agents/analytics_agent.py`** — Fetches LinkedIn post analytics, computes performance bonuses for adaptive ranking
+2. **`agents/feed_agent.py`** — Fetches RSS feeds, filters items from last 7 days, returns list sorted newest-first
+3. **`agents/ranking_agent.py`** — Calls Claude Haiku to score and rank stories 1-10 across 4 dimensions
+4. **`agents/writer_agent.py`** — Calls Claude Sonnet to write the post, then Claude Haiku to critique it
+5. **`agents/notifier_agent.py`** — Sends Telegram messages and handles inline-keyboard HITL approval
+6. **`agents/publisher_agent.py`** — Posts to LinkedIn REST API
 
-**Content scoring**: Claude Haiku scores stories 1-10 across 4 dimensions: Content Quality, Topic Relevance, Trend & Timing, LinkedIn Profile Value. Only scores ≥6 get published.
+**Human-in-the-loop flow**:
+- After the post is generated, `request_approval()` sends a Telegram preview with [✅ Pubblica] / [❌ Annulla] buttons
+- The pipeline long-polls `getUpdates` for up to 30 minutes waiting for a tap
+- Approve → publish to LinkedIn + save to `history.json`
+- Reject or timeout → skip publishing, send Telegram notification
+
+**Content scoring**: Claude Haiku scores stories 1-10 across 4 dimensions: Content Quality, Topic Relevance, Trend & Timing, LinkedIn Profile Value. Only scores ≥6 (`MIN_SCORE` in `config.py`) get published.
 
 **Post format**: LinkedIn post with article link + comment (max 2 lines, 3 only if score ≥9):
 - Technical but accessible to everyone (not just experts)
@@ -63,18 +79,17 @@ The script requires these environment variables (defined in `.env` locally, or a
 ## LinkedIn API Details
 
 - **Endpoint**: `https://api.linkedin.com/rest/posts`
-- **Version**: `202408` (set via `LinkedIn-Version` header)
+- **Version**: `202603` (set via `LinkedIn-Version` header, defined in `config.py`)
 - **Protocol**: REST.li 2.0.0
 - **Post ID**: Returned in `x-restli-id` response header
 
 ## RSS Feed Sources
 
-Defined in `RSS_FEEDS` dict (post.py:26-32):
-- ArXiv AI (cs.AI category)
-- Hugging Face blog
-- Anthropic blog
-- DeepMind blog
-- Papers With Code
+Defined in `RSS_FEEDS` dict in `config.py` (30 sources):
+- AI labs: OpenAI, Anthropic, Google DeepMind, Google AI Blog, Microsoft Research
+- Agent frameworks: LangChain, LlamaIndex, CrewAI, Haystack, n8n, Zapier
+- Practitioners: Simon Willison, Chip Huyen, Eugene Yan, Lilian Weng, Sebastian Raschka, Jay Alammar
+- Industry news: TechCrunch AI, VentureBeat AI, The Batch, The Gradient, Latent Space
 
 ## Error Handling
 
@@ -82,16 +97,17 @@ Defined in `RSS_FEEDS` dict (post.py:26-32):
 - LLM invalid JSON: pipeline stops, no post published
 - LinkedIn API errors: pipeline fails with exception
 - Telegram failures: logged as warnings, don't fail pipeline
+- HITL timeout (30 min): treated as rejection, no post published
 - All pipeline failures: send error notification to Telegram before exit
 
 ## LLM Integration
 
-- **Ranking** (`_rank_stories`): `claude-haiku-4-5-20251001`, max_tokens=500, temperature=0 — structured scoring
-- **Writing** (`_write_post`): `claude-sonnet-4-6`, max_tokens=200, temperature=0.7 — creative post generation
+- **Ranking** (`ranking_agent.py`): `claude-haiku-4-5-20251001`, max_tokens=500, temperature=0 — structured scoring
+- **Writing** (`writer_agent.py`): `claude-sonnet-4-6`, max_tokens=200, temperature=0.7 — creative post generation
+- **Critique** (`writer_agent.py`): `claude-haiku-4-5-20251001`, max_tokens=200, temperature=0 — post quality check
 
 ## Dependencies
 
 Core: `anthropic`, `feedparser`, `requests`
 - No testing framework (single-script utility)
 - No linting config (follow PEP 8)
-- No CI/CD files in repo (likely GitHub Actions elsewhere)

@@ -14,7 +14,7 @@ import anthropic
 
 from agents.analytics_agent import compute_performance_bonuses, update_analytics
 from agents.feed_agent import fetch_feeds
-from agents.notifier_agent import send as notify
+from agents.notifier_agent import request_approval, send as notify
 from agents.publisher_agent import publish
 from agents.ranking_agent import rank_stories
 from agents.writer_agent import critique_post, truncate_comment, write_post
@@ -126,8 +126,10 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="LinkedIn AI News Post")
     parser.add_argument("--topic", type=str, default=None, help="Custom focus topic (overrides FOCUS_TOPICS)")
+    parser.add_argument("--no-confirm", action="store_true", help="Skip Telegram approval step and publish immediately")
     args = parser.parse_args()
     focus = args.topic or os.environ.get("TOPIC") or FOCUS_TOPICS
+    skip_confirm = args.no_confirm or os.environ.get("SKIP_CONFIRM") == "1"
     if focus != FOCUS_TOPICS:
         log.info("Using custom topic: %s", focus)
 
@@ -168,6 +170,20 @@ def main() -> None:
             return
 
         log.info("Publishing: %s (score %s)", story["title"], story["score"])
+
+        if not skip_confirm:
+            preview = (
+                f"<b>📝 Post da pubblicare su LinkedIn</b>\n\n"
+                f"<b>{story['title']}</b>\n"
+                f"⭐ Score: {story['score']}/10\n"
+                f"🔗 {story['url']}\n\n"
+                f"<i>{comment}</i>"
+            )
+            approved = request_approval(preview, tg_token, tg_chat)
+            if not approved:
+                notify("⏭ Post annullato o timeout — nessuna pubblicazione.", tg_token, tg_chat)
+                log.info("Post not approved — skipping LinkedIn publication")
+                return
 
         post_id = publish(
             comment,
