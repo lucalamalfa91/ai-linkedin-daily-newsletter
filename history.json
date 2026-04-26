@@ -94,5 +94,37 @@
       "#SoftwareEngineering"
     ],
     "analytics": null
+  },
+  "urn:li:share:7454241397156741120": {
+    "post_id": "urn:li:share:7454241397156741120",
+    "published_at": "2026-04-26T18:54:02.412756+00:00",
+    "article_url": "https://techcrunch.com/2026/04/25/anthropic-created-a-test-marketplace-for-agent-on-agent-commerce/",
+    "article_title": "Anthropic created a test marketplace for agent-on-agent commerce",
+    "source": "",
+    "score": 10,
+    "comment_text": "Anthropic let AI agents buy and sell real things.\n\nAnthropics recent experiment ran a classified marketplace where AI agents acted as both buyers and sellers — negotiating, agreeing, and closing deals with actual money on the line 🤝 No human in the loop to approve each transaction. Just agents doing commerce.\n\nIt's like giving your microservices a credit card and a motive — the architecture questions come fast.\nWhen agents can transact autonomously, who owns the audit trail when a deal goes wrong?\n#AI #SoftwareEngineering #AgentAI",
+    "topics": [
+      "anthropic",
+      "created",
+      "test",
+      "marketplace",
+      "agent",
+      "commerce",
+      "agents",
+      "sell",
+      "real",
+      "things",
+      "anthropics",
+      "recent",
+      "experiment",
+      "classified",
+      "where"
+    ],
+    "hashtags": [
+      "#AI",
+      "#SoftwareEngineering",
+      "#AgentAI"
+    ],
+    "analytics": null
   }
 }
