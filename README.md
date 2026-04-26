@@ -6,7 +6,7 @@ Automated LinkedIn AI news pipeline that discovers, curates, and publishes the b
 
 ## What It Does
 
-1. **Fetches** AI news from 19 RSS sources spanning AI labs, framework authors, researchers, and industry media
+1. **Fetches** AI news from 30 RSS sources spanning AI labs, framework authors, researchers, and industry media — fetched concurrently to minimise pipeline runtime
 2. **Collects analytics** for recent posts (7–21 days old) from the LinkedIn Analytics API — reactions, comments, reposts, impressions
 3. **Detects** trending topics by cross-referencing which keywords appear across multiple independent sources
 4. **Ranks** up to 40 candidate stories using Claude Haiku (scored 1–10 across 4 editorial dimensions), with adaptive bonuses derived from post performance history
@@ -36,7 +36,7 @@ _compute_performance_       — derive per-source and per-topic engagement bonus
   bonuses()                   from historical data (high performers +1, low performers −1)
        │
        ▼
-fetch_feeds()               — 19 RSS sources, last 7 days, sorted newest-first
+fetch_feeds()               — 30 RSS sources, last 7 days, fetched concurrently, sorted newest-first
        │
        ▼
 _detect_trending_topics()   — keyword frequency across sources (proxy for what's hot)
@@ -78,15 +78,15 @@ send_telegram()             — best-effort notification (never fails the pipeli
 
 ## RSS Feed Sources
 
-19 sources across 4 categories, all monitored for the **last 7 days**:
+30 sources across 5 categories, all monitored for the **last 7 days** and fetched concurrently:
 
 | Category | Sources |
 |----------|---------|
 | **AI Labs** | OpenAI, Anthropic, Google DeepMind, Google AI Blog |
-| **Agentic AI & Frameworks** | LangChain Blog, LlamaIndex Blog, Hugging Face |
+| **Agentic AI & Frameworks** | LangChain Blog, LlamaIndex Blog, CrewAI Blog, Haystack Blog, Hugging Face, Omdena Blog, n8n Blog, Vellum AI Blog, Zapier Blog |
 | **Practitioners & Researchers** | Simon Willison, The Batch (deeplearning.ai), Sebastian Raschka, The Gradient, Microsoft Research |
 | **Industry News** | TechCrunch AI, VentureBeat AI |
-| **LLM Efficiency & Prompt Engineering** | Chip Huyen, Eugene Yan, Lilian Weng, Interconnects, Hamel Husain |
+| **Prompt Engineering & LLM Efficiency** | Chip Huyen, Eugene Yan, Lilian Weng, Interconnects, Hamel Husain, Jay Alammar, Latent Space, Lakera AI Blog, The AI Corner, Maxim AI Blog |
 
 Feed fetch failures are caught per-source and logged as warnings — a single failing feed never stops the pipeline.
 
@@ -412,9 +412,10 @@ A successful run (with analytics and adaptive ranking active) looks like this:
                          HIGH-ENGAGEMENT TOPICS: agents, reasoning, interpretability
 2026-04-22T07:15:02 INFO Last published source: LangChain Blog
 2026-04-22T07:15:03 INFO Fetching OpenAI ...
-2026-04-22T07:15:04 INFO Fetching Anthropic ...
-...
-2026-04-22T07:15:19 INFO Found 91 items in the last 7 days
+2026-04-22T07:15:03 INFO Fetching Anthropic ...
+2026-04-22T07:15:03 INFO Fetching Google DeepMind ...
+... (all 30 feeds fetched concurrently, logs interleaved)
+2026-04-22T07:15:06 INFO Found 91 items in the last 7 days
 2026-04-22T07:15:23 INFO Candidate rank=1 score=9 url_valid=True title=Anthropic releases Claude 4 with extended thinking
 2026-04-22T07:15:24 INFO Writing post for rank=1 score=9
 2026-04-22T07:15:25 INFO Critic attempt=1 score=9 issues=[]
@@ -451,7 +452,7 @@ If all candidates score below 6/10:
 ├── .github/
 │   └── workflows/
 │       └── post.yml    # GitHub Actions schedule & runner (Tue 7 AM UTC, contents: write)
-├── post.py             # Entire pipeline — single script, ~970 lines
+├── post.py             # Entire pipeline — single script, ~1050 lines
 ├── history.json        # Post history + LinkedIn analytics (auto-committed by CI)
 ├── requirements.txt    # anthropic, feedparser, requests
 ├── .env                # Local secrets (gitignored)
