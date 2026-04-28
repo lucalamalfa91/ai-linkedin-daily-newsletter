@@ -20,13 +20,6 @@ jobs:
       contents: write
 
     steps:
-      - name: Notify pipeline start
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d "text=🚀 LinkedIn AI Post pipeline started" \
-            -d "parse_mode=HTML" || true
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
