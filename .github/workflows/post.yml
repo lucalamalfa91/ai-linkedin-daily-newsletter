@@ -11,10 +11,6 @@ on:
         description: 'Custom focus topic (leave empty for default pipeline)'
         required: false
         default: ''
-      skip_confirm:
-        description: 'Skip Telegram approval and publish immediately (true/false)'
-        required: false
-        default: 'false'
 
 jobs:
   post:
@@ -53,7 +49,6 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TOPIC: ${{ github.event.inputs.topic }}
-          SKIP_CONFIRM: ${{ github.event.inputs.skip_confirm }}
         run: python main.py
 
       - name: Notify on failure
