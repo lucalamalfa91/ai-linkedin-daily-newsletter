@@ -11,6 +11,10 @@ on:
         description: 'Custom focus topic (leave empty for default pipeline)'
         required: false
         default: ''
+      skip_confirm:
+        description: 'Skip Telegram approval and publish immediately (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   post:
@@ -20,6 +24,13 @@ jobs:
       contents: write
 
     steps:
+      - name: Notify pipeline start
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "text=🚀 LinkedIn AI Post pipeline started" \
+            -d "parse_mode=HTML" || true
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -42,6 +53,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TOPIC: ${{ github.event.inputs.topic }}
+          SKIP_CONFIRM: ${{ github.event.inputs.skip_confirm }}
         run: python main.py
 
       - name: Notify on failure
