@@ -61,7 +61,7 @@ def _select_story(
     last_published_source: str,
 ) -> tuple[str | None, dict | None]:
     """Rank → validate → write → critique. Returns (comment, story) or (None, None)."""
-    ranked = rank_stories(items, client, performance_bonus, last_published_source)
+    ranked = rank_stories(items, client, performance_bonus, last_published_source, focus_topics)
     if not ranked:
         return None, None
 
