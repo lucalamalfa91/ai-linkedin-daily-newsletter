@@ -13,14 +13,14 @@ _SYSTEM = (
     "Reply ONLY with valid JSON — no markdown fences, no extra text."
 )
 
-_SCORING_RUBRIC = f"""\
+_SCORING_RUBRIC_TEMPLATE = """\
 Score each story 0-10. Return JSON: {{"ranked": [{{"rank": 1, "score": 8, "title": "...", "url": "..."}}]}}
 
 SOURCE BONUS (pick the highest that applies):
-  +3  LLM Efficiency & Prompt Engineering: {", ".join(SOURCE_CATEGORIES["LLM Efficiency & Prompt Engineering"])}
-  +2  Agentic AI & Frameworks: {", ".join(SOURCE_CATEGORIES["Agentic AI & Frameworks"])}
-  +1  AI Labs: {", ".join(SOURCE_CATEGORIES["AI Labs"])}
-  +1  Practitioners & Researchers: {", ".join(SOURCE_CATEGORIES["Practitioners & Researchers"])}
+  +3  LLM Efficiency & Prompt Engineering: {llm_sources}
+  +2  Agentic AI & Frameworks: {agentic_sources}
+  +1  AI Labs: {ai_lab_sources}
+  +1  Practitioners & Researchers: {practitioner_sources}
 
 CONTENT:
   +2  Concrete release (model, product, open-source, benchmark)
@@ -29,7 +29,7 @@ CONTENT:
   -3  Pure marketing, no technical content
 
 TOPIC:
-  +3  Directly covers a focus topic: {FOCUS_TOPICS[:120]}...
+  +3  Directly covers a focus topic: {focus_topics}
   +2  LLM efficiency, token optimisation, inference cost, prompt engineering
   +1  Agentic AI, agent frameworks, orchestration
   -3  No meaningful AI angle
@@ -44,8 +44,17 @@ LINKEDIN VALUE:
   +1  Positions author as knowledgeable and ahead
   -2  Looks like reposting a press release
 
-Cap 10, floor 0. Return top {RANKED_TOP_N} only. Copy URLs exactly — never invent one.\
+Cap 10, floor 0. Return top {top_n} only. Copy URLs exactly — never invent one.\
 """
+
+_RUBRIC_BASE = _SCORING_RUBRIC_TEMPLATE.format(
+    llm_sources=", ".join(SOURCE_CATEGORIES["LLM Efficiency & Prompt Engineering"]),
+    agentic_sources=", ".join(SOURCE_CATEGORIES["Agentic AI & Frameworks"]),
+    ai_lab_sources=", ".join(SOURCE_CATEGORIES["AI Labs"]),
+    practitioner_sources=", ".join(SOURCE_CATEGORIES["Practitioners & Researchers"]),
+    focus_topics="{focus_topics}",
+    top_n=RANKED_TOP_N,
+)
 
 
 def _detect_trending_topics(items: list[dict]) -> str:
@@ -78,11 +87,13 @@ def rank_stories(
     client: anthropic.Anthropic,
     performance_bonus: str = "",
     last_published_source: str = "",
+    focus_topics: str = "",
 ) -> list[dict]:
     """Call Claude Haiku to score and rank stories. Returns ranked list or [] on failure."""
     if not items:
         return []
 
+    active_topics = focus_topics or FOCUS_TOPICS
     trending = _detect_trending_topics(items)
     feed_lines = "\n".join(
         f"[{i + 1}] ({it['source']}) {it['title']} — {it['link']} — {it['summary'][:200]}"
@@ -102,6 +113,7 @@ def rank_stories(
             f"SOURCE DIVERSITY: '{last_published_source}' published last week — apply -1 to avoid repetition."
         )
 
+    rubric = _RUBRIC_BASE.format(focus_topics=active_topics[:120])
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=500,
@@ -111,7 +123,7 @@ def rank_stories(
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": _SCORING_RUBRIC, "cache_control": {"type": "ephemeral"}},
+                    {"type": "text", "text": rubric, "cache_control": {"type": "ephemeral"}},
                     {"type": "text", "text": "\n\n".join(dynamic_parts)},
                 ],
             },
