@@ -126,5 +126,37 @@
       "#AgentAI"
     ],
     "analytics": null
+  },
+  "urn:li:share:7454822463219363841": {
+    "post_id": "urn:li:share:7454822463219363841",
+    "published_at": "2026-04-28T09:22:59.330604+00:00",
+    "article_url": "https://openai.com/index/open-source-codex-orchestration-symphony",
+    "article_title": "An open-source spec for orchestration: Symphony",
+    "source": "",
+    "score": 10,
+    "comment_text": "Your issue tracker is now an agent's to-do list\n\nOpenAI dropped Symphony, an open-source spec that wires Codex directly into orchestration pipelines — so agents pick up tickets, write code, and ship without waiting for a human to context-switch back 🔄 It's not a product, it's a contract between your tools and your agents, which means any team can build on top of it.\n\nTAKEAWAY: Symphony is to agent workflows what REST was to APIs — a shared language that stops everyone from reinventing the plumbing.\nQUESTION: If agents start triaging and closing issues autonomously, which part of your current review process becomes the bottleneck first?\n#softwaredevelopment #agentic #openai",
+    "topics": [
+      "open",
+      "source",
+      "spec",
+      "orchestration",
+      "symphony",
+      "issue",
+      "tracker",
+      "agent",
+      "list",
+      "openai",
+      "dropped",
+      "wires",
+      "codex",
+      "directly",
+      "pipelines"
+    ],
+    "hashtags": [
+      "#softwaredevelopment",
+      "#agentic",
+      "#openai"
+    ],
+    "analytics": null
   }
 }
