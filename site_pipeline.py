@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """Daily AI Coding Tools digest pipeline.
 
-Flow: fetch coding tool feeds → rank top 3 → write summaries + considerations
-      → write site/news.json → build site/index.html → commit + push.
+Flow:
+  1. Scrape changelog pages (8 sources) → Claude Haiku extracts items
+  2. Scrape Claude Code feature docs → Claude Sonnet generates spotlight articles
+  3. Rank all items → top 3 (Claude Code gets priority boost)
+  4. Write summary + considerations for each → news.json + index.html
+  5. Commit + push → Vercel auto-deploys
 """
 
 import json
@@ -16,19 +20,21 @@ from pathlib import Path
 
 import anthropic
 
-from agents.feed_agent import fetch_feeds
+from agents.changelog_agent import extract_changelog_items
+from agents.feature_spotlight_agent import generate_feature_spotlight
 from agents.ranking_agent import rank_stories
 from agents.site_writer_agent import write_site_entry
 from config import (
+    CHANGELOG_SOURCES,
+    CLAUDE_CODE_FEATURE_PAGES,
     CODING_FOCUS_TOPICS,
-    CODING_RSS_FEEDS,
     NEWS_JSON_PATH,
     RANKED_SITE_TOP_N,
     SITE_OUTPUT_PATH,
     TEMPLATE_PATH,
 )
-from utils.cursor_scraper import fetch_cursor_changelog
 from utils.og_meta import fetch_og_meta
+from utils.page_scraper import fetch_page_text
 from utils.site_builder import build_site
 from utils.url_utils import is_valid_url, normalize_url
 
@@ -62,8 +68,35 @@ def _require_env(*keys: str) -> None:
         sys.exit(1)
 
 
+def _scrape_changelogs(client: anthropic.Anthropic) -> list[dict]:
+    """Scrape all changelog sources and return extracted items."""
+    items = []
+    for source_name, url in CHANGELOG_SOURCES.items():
+        log.info("Scraping changelog: %s", source_name)
+        text = fetch_page_text(url)
+        if not text:
+            log.warning("Empty page for %s — skipping", source_name)
+            continue
+        extracted = extract_changelog_items(text, source_name, url, client)
+        items.extend(extracted)
+    log.info("Changelog scraping: %d total items from %d sources", len(items), len(CHANGELOG_SOURCES))
+    return items
+
+
+def _generate_spotlights(client: anthropic.Anthropic) -> list[dict]:
+    """Scrape Claude Code feature docs and generate self-made spotlight articles."""
+    spotlights = []
+    for feature_name, url in CLAUDE_CODE_FEATURE_PAGES:
+        log.info("Generating feature spotlight: %s", feature_name)
+        text = fetch_page_text(url)
+        article = generate_feature_spotlight(feature_name, url, text, client)
+        if article:
+            spotlights.append(article)
+    log.info("Feature spotlights: %d articles generated", len(spotlights))
+    return spotlights
+
+
 def _write_news_json(data: dict) -> None:
-    """Atomically write news.json."""
     path = Path(NEWS_JSON_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
@@ -104,25 +137,26 @@ def main() -> None:
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    # 1. Fetch last 2 days from coding tool feeds; widen window if too sparse
-    items = fetch_feeds(days=2, feeds=CODING_RSS_FEEDS)
-    if len(items) < RANKED_SITE_TOP_N:
-        log.info("Only %d items in 2 days — widening to 4 days", len(items))
-        items = fetch_feeds(days=4, feeds=CODING_RSS_FEEDS)
+    # 1. Scrape changelogs from all 8 sources
+    changelog_items = _scrape_changelogs(client)
 
-    # Also add Cursor changelog (no RSS)
-    cursor_items = fetch_cursor_changelog(limit=3)
-    items = cursor_items + items  # Cursor first so it's not excluded by feed list order
+    # 2. Generate Claude Code feature spotlight articles
+    spotlight_items = _generate_spotlights(client)
 
-    if not items:
-        log.warning("No items fetched from any source — aborting")
+    # Merge: spotlights first so the ranker sees them prominently.
+    # The ranking_agent prompt gives +3 to focus topics which includes Claude Code.
+    all_items = spotlight_items + changelog_items
+
+    if not all_items:
+        log.error("No items collected from any source — aborting")
         sys.exit(1)
 
-    log.info("Total items to rank: %d", len(items))
+    log.info("Total items to rank: %d (%d spotlights + %d changelog)",
+             len(all_items), len(spotlight_items), len(changelog_items))
 
-    # 2. Rank: top 3 via Claude Haiku
+    # 3. Rank: pick top 3
     ranked = rank_stories(
-        items,
+        all_items,
         client,
         focus_topics=CODING_FOCUS_TOPICS,
         top_n=RANKED_SITE_TOP_N,
@@ -131,16 +165,16 @@ def main() -> None:
         log.error("Ranking returned no results — aborting")
         sys.exit(1)
 
-    # 3. Enrich each story with summary + considerations
+    # 4. Enrich top 3 with full summary + considerations
     stories = []
     for candidate in ranked[:RANKED_SITE_TOP_N]:
         url = normalize_url(candidate.get("url", ""))
         if not is_valid_url(url):
-            log.warning("Invalid URL for candidate '%s' — skipping", candidate.get("title"))
+            log.warning("Invalid URL for '%s' — skipping", candidate.get("title"))
             continue
 
         candidate["url"] = url
-        original = next((it for it in items if it["link"] == url), None)
+        original = next((it for it in all_items if it["link"] == url), None)
 
         og = fetch_og_meta(url)
         enrichment = write_site_entry(candidate, original, client)
@@ -150,18 +184,19 @@ def main() -> None:
             "score": candidate.get("score"),
             "title": candidate.get("title", ""),
             "url": url,
-            "source": original.get("source", "") if original else candidate.get("source", ""),
+            "source": original.get("source", "") if original else "",
             "summary": enrichment["summary"],
             "considerations": enrichment["considerations"],
             "published": original.get("published", "") if original else "",
             "og_image": og.get("image") or None,
+            "is_feature_spotlight": bool(original and original.get("_is_feature_spotlight")),
         })
 
     if not stories:
         log.error("No valid stories after enrichment — aborting")
         sys.exit(1)
 
-    # 4. Write news.json
+    # 5. Write news.json
     now = datetime.now(timezone.utc)
     news_data = {
         "generated_at": now.isoformat(),
@@ -170,13 +205,17 @@ def main() -> None:
     }
     _write_news_json(news_data)
 
-    # 5. Build HTML
+    # 6. Build HTML
     build_site(news_data, TEMPLATE_PATH, SITE_OUTPUT_PATH)
 
-    # 6. Commit and push (GitHub Actions only)
+    # 7. Commit and push (GitHub Actions only)
     _commit_and_push()
 
-    log.info("Site pipeline complete — %d stories published", len(stories))
+    spotlights_in_top3 = sum(1 for s in stories if s.get("is_feature_spotlight"))
+    log.info(
+        "Site pipeline complete — %d stories (%d feature spotlights, %d changelogs)",
+        len(stories), spotlights_in_top3, len(stories) - spotlights_in_top3,
+    )
 
 
 if __name__ == "__main__":
