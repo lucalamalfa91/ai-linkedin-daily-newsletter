@@ -9,12 +9,16 @@ from utils.url_utils import normalize_url
 log = logging.getLogger(__name__)
 
 
-def fetch_feeds(days: int = 7) -> list[dict]:
-    """Fetch all RSS feeds and return items from the last `days` days, sorted newest-first."""
+def fetch_feeds(days: int = 7, feeds: dict | None = None) -> list[dict]:
+    """Fetch RSS feeds and return items from the last `days` days, sorted newest-first.
+
+    Pass `feeds` to override the default RSS_FEEDS dict (e.g. for a focused source list).
+    """
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     items: list[dict] = []
+    source_feeds = feeds if feeds is not None else RSS_FEEDS
 
-    for source, url in RSS_FEEDS.items():
+    for source, url in source_feeds.items():
         try:
             log.info("Fetching %s ...", source)
             feed = feedparser.parse(

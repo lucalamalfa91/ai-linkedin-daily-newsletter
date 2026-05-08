@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 RSS_FEEDS = {
     "OpenAI":             "https://openai.com/news/rss.xml",
@@ -106,6 +107,7 @@ BANNED_WORDS = [
 
 MIN_SCORE = 6
 RANKED_TOP_N = 5
+RANKED_SITE_TOP_N = 3
 
 LINKEDIN_API = "https://api.linkedin.com/rest/posts"
 LINKEDIN_IMAGES_API = "https://api.linkedin.com/rest/images?action=initializeUpload"
@@ -114,3 +116,42 @@ ANALYTICS_ENDPOINT = "https://api.linkedin.com/rest/memberCreatorPostAnalytics"
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.json")
 ANALYTICS_MIN_AGE_DAYS = 7
 ANALYTICS_MAX_AGE_DAYS = 21
+
+# --- AI Coding Tools site pipeline ---
+
+_ROOT = Path(__file__).parent
+NEWS_JSON_PATH = _ROOT / "site" / "news.json"
+TEMPLATE_PATH = _ROOT / "site" / "template.html"
+SITE_OUTPUT_PATH = _ROOT / "site" / "index.html"
+
+CODING_RSS_FEEDS = {
+    "Anthropic":          "https://www.anthropic.com/rss.xml",
+    "OpenAI":             "https://openai.com/news/rss.xml",
+    "GitHub Blog":        "https://github.blog/feed/",
+    "GitHub Changelog":   "https://github.blog/changelog/feed/",
+    "Replit":             "https://blog.replit.com/rss.xml",
+    "Codeium / Windsurf": "https://codeium.com/blog/rss.xml",
+    "Aider":              "https://aider.chat/blog/feed.xml",
+    "Continue.dev":       "https://github.com/continuedev/continue/releases.atom",
+    "Google Developers":  "https://developers.googleblog.com/feeds/posts/default",
+    "AWS DevOps":         "https://aws.amazon.com/blogs/devops/feed/",
+    "JetBrains":          "https://blog.jetbrains.com/feed.xml",
+    "Simon Willison":     "https://simonwillison.net/atom/everything/",
+    "Vercel":             "https://vercel.com/blog/rss.xml",
+    "The Pragmatic Engineer": "https://newsletter.pragmaticengineer.com/feed",
+}
+
+CODING_FOCUS_TOPICS = (
+    "Claude Code, Cursor IDE, GitHub Copilot, OpenAI Codex, Windsurf, Codeium, "
+    "Replit AI, Amazon Q Developer, Google Gemini Code Assist, JetBrains AI Assistant, "
+    "Continue.dev, Aider, Tabnine, "
+    "AI coding tools, AI code generation, AI code completion, AI pair programming, "
+    "agentic coding, autonomous coding agents, coding agent frameworks, "
+    "AI IDE integration, AI-assisted development, developer productivity AI, "
+    "code review AI, AI refactoring, AI debugging, AI test generation, "
+    "LLM for software engineering, AI software development, AI DevOps, "
+    "MCP (model context protocol), tool use in coding agents, "
+    "function calling for code, structured output for code, "
+    "code search, semantic code search, code embeddings, "
+    "AI terminal, AI CLI tools, AI shell assistants"
+)

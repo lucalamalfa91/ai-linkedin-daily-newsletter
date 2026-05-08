@@ -44,7 +44,7 @@ LINKEDIN VALUE:
   +1  Positions author as knowledgeable and ahead
   -2  Looks like reposting a press release
 
-Cap 10, floor 0. Return top {RANKED_TOP_N} only. Copy URLs exactly — never invent one.\
+Cap 10, floor 0. Return top __TOP_N__ only. Copy URLs exactly — never invent one.\
 """
 
 
@@ -79,11 +79,13 @@ def rank_stories(
     performance_bonus: str = "",
     last_published_source: str = "",
     focus_topics: str = "",
+    top_n: int | None = None,
 ) -> list[dict]:
     """Call Claude Haiku to score and rank stories. Returns ranked list or [] on failure."""
     if not items:
         return []
 
+    n = top_n if top_n is not None else RANKED_TOP_N
     active_topics = focus_topics or FOCUS_TOPICS
     trending = _detect_trending_topics(items)
     feed_lines = "\n".join(
@@ -104,7 +106,7 @@ def rank_stories(
             f"SOURCE DIVERSITY: '{last_published_source}' published last week — apply -1 to avoid repetition."
         )
 
-    rubric = _RUBRIC_BASE.replace("__FOCUS_TOPICS__", active_topics[:120])
+    rubric = _RUBRIC_BASE.replace("__FOCUS_TOPICS__", active_topics[:120]).replace("__TOP_N__", str(n))
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=500,
