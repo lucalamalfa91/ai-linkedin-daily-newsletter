@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 """LinkedIn AI News Post — multi-agent pipeline.
 
-Flow: analytics update → fetch RSS → rank stories → write post → publish LinkedIn → notify Telegram.
+Flow: analytics update → load site/news.json → pick best story → write post
+      → publish LinkedIn → notify Telegram.
 """
 
 import argparse
+import json
 import logging
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import anthropic
 
 from agents.analytics_agent import compute_performance_bonuses, update_analytics
-from agents.feed_agent import fetch_feeds
 from agents.notifier_agent import request_approval, send as notify
 from agents.publisher_agent import publish
-from agents.ranking_agent import rank_stories
 from agents.writer_agent import critique_post, truncate_comment, write_post
-from config import FOCUS_TOPICS, MIN_SCORE
+from config import FOCUS_TOPICS, MIN_SCORE, NEWS_JSON_PATH
 from utils.history import commit_history_to_git, extract_hashtags, extract_topics, load_history, save_history
 from utils.og_meta import fetch_og_meta
 from utils.url_utils import is_valid_url, normalize_url
@@ -53,65 +54,136 @@ def _require_env(*keys: str) -> None:
         sys.exit(1)
 
 
+def _load_news_json() -> list[dict]:
+    """Load pre-ranked stories from site/news.json (written daily by site_pipeline.py)."""
+    path = Path(NEWS_JSON_PATH)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"site/news.json not found at {path}. "
+            "Run site_pipeline.py first, or trigger the update_site GitHub Actions workflow."
+        )
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    stories = data.get("stories", [])
+    log.info("Loaded %d stories from news.json (generated %s)", len(stories), data.get("generated_at", "?"))
+    return stories
+
+
+def _pick_linkedin_story(
+    stories: list[dict],
+    client: anthropic.Anthropic,
+    performance_bonus: str,
+    last_published_source: str,
+) -> dict | None:
+    """Ask Claude Haiku to pick the single best story from the 3 for LinkedIn."""
+    if not stories:
+        return None
+    if len(stories) == 1:
+        return stories[0]
+
+    lines = []
+    for s in stories:
+        lines.append(
+            f"[{s.get('rank', '?')}] score={s.get('score', 0)} source={s.get('source', '')} "
+            f"title={s.get('title', '')} url={s.get('url', '')}"
+        )
+    feed_block = "\n".join(lines)
+
+    bonus_section = ""
+    if performance_bonus:
+        bonus_section = f"\nHISTORICAL PERFORMANCE:\n{performance_bonus}"
+    diversity_section = ""
+    if last_published_source:
+        diversity_section = f"\nSOURCE DIVERSITY: '{last_published_source}' published last time — prefer a different source."
+
+    prompt = (
+        f"Pick the single best story for a LinkedIn post targeting AI/developer professionals.\n\n"
+        f"FOCUS: {FOCUS_TOPICS[:200]}\n{bonus_section}{diversity_section}\n\n"
+        f"STORIES:\n{feed_block}\n\n"
+        "Return ONLY valid JSON: {\"rank\": <number>}"
+    )
+
+    try:
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=50,
+            temperature=0,
+            messages=[
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": "{"},
+            ],
+        )
+        raw = "{" + msg.content[0].text.strip()
+        chosen_rank = json.loads(raw).get("rank")
+        for s in stories:
+            if s.get("rank") == chosen_rank:
+                log.info("Claude selected rank=%s: %s", chosen_rank, s.get("title"))
+                return s
+    except Exception as exc:
+        log.warning("Story selection LLM failed (%s) — falling back to rank #1", exc)
+
+    # Fallback: highest-scored story
+    return max(stories, key=lambda s: s.get("score", 0))
+
+
 def _select_story(
-    items: list[dict],
+    stories: list[dict],
     client: anthropic.Anthropic,
     focus_topics: str,
     performance_bonus: str,
     last_published_source: str,
 ) -> tuple[str | None, dict | None]:
-    """Rank → validate → write → critique. Returns (comment, story) or (None, None)."""
-    ranked = rank_stories(items, client, performance_bonus, last_published_source, focus_topics)
-    if not ranked:
+    """Pick story from news.json → validate → write → critique. Returns (comment, story) or (None, None)."""
+    story = _pick_linkedin_story(stories, client, performance_bonus, last_published_source)
+    if not story:
         return None, None
 
-    for candidate in ranked:
-        score = candidate.get("score", 0)
-        url = normalize_url(candidate.get("url", ""))
-        rank = candidate.get("rank", "?")
+    url = normalize_url(story.get("url", ""))
+    if not is_valid_url(url):
+        log.warning("Selected story has invalid URL '%s' — aborting", url)
+        return None, None
 
-        log.info("Candidate rank=%s score=%d url_valid=%s title=%s", rank, score, is_valid_url(url), candidate.get("title", ""))
+    story["url"] = url
 
-        if score < MIN_SCORE:
-            log.info("  -> skipped (score %d < threshold %d)", score, MIN_SCORE)
-            continue
-        if not is_valid_url(url):
-            log.warning("  -> skipped (invalid URL '%s')", url)
-            continue
-
-        candidate["url"] = url
-        original = next((it for it in items if it["link"] == url), None)
-
+    # Use cached og_image from news.json; fetch fresh only if missing
+    og: dict = {}
+    if story.get("og_image"):
+        og = {"image": story["og_image"]}
+    else:
         og = fetch_og_meta(url)
-        if not og.get("image"):
-            log.info("  -> skipped (no thumbnail available)")
-            continue
-        candidate["og"] = og
 
-        log.info("Writing post for rank=%s score=%d", rank, score)
-        comment = write_post(candidate, original, client)
-        if not comment:
-            log.warning("  -> write_post failed, trying next candidate")
-            continue
+    if not og.get("image"):
+        log.info("No thumbnail for '%s' — skipping", story.get("title"))
+        return None, None
 
-        for attempt in range(2):
-            critique = critique_post(comment, client)
-            c_score = critique.get("score", 10)
-            log.info("Critic attempt=%d score=%d issues=%s", attempt + 1, c_score, critique.get("issues", []))
-            if c_score >= 7:
-                break
-            if attempt == 0:
-                log.warning("Critic score=%d — retrying post generation", c_score)
-                retry = write_post(candidate, original, client)
-                if retry:
-                    comment = retry
+    story["og"] = og
 
-        comment = truncate_comment(comment)
-        log.info("Selected candidate rank=%s score=%d", rank, score)
-        return comment, candidate
+    # Build a compatible "original" dict for write_post
+    original = {
+        "source": story.get("source", ""),
+        "summary": story.get("summary", ""),
+    }
 
-    log.info("No candidate passed validation (threshold=%d)", MIN_SCORE)
-    return None, None
+    log.info("Writing post for: %s (score=%s)", story.get("title"), story.get("score"))
+    comment = write_post(story, original, client)
+    if not comment:
+        log.warning("write_post failed")
+        return None, None
+
+    for attempt in range(2):
+        critique = critique_post(comment, client)
+        c_score = critique.get("score", 10)
+        log.info("Critic attempt=%d score=%d issues=%s", attempt + 1, c_score, critique.get("issues", []))
+        if c_score >= 7:
+            break
+        if attempt == 0:
+            log.warning("Critic score=%d — retrying post generation", c_score)
+            retry = write_post(story, original, client)
+            if retry:
+                comment = retry
+
+    comment = truncate_comment(comment)
+    return comment, story
 
 
 def main() -> None:
@@ -125,8 +197,8 @@ def main() -> None:
     )
 
     parser = argparse.ArgumentParser(description="LinkedIn AI News Post")
-    parser.add_argument("--topic", type=str, default=None, help="Custom focus topic (overrides FOCUS_TOPICS)")
-    parser.add_argument("--no-confirm", action="store_true", help="Skip Telegram approval step and publish immediately")
+    parser.add_argument("--topic", type=str, default=None, help="Custom focus topic override")
+    parser.add_argument("--no-confirm", action="store_true", help="Skip Telegram approval and publish immediately")
     args = parser.parse_args()
     focus = args.topic or os.environ.get("TOPIC") or FOCUS_TOPICS
     skip_confirm = args.no_confirm or os.environ.get("SKIP_CONFIRM") == "1"
@@ -157,16 +229,16 @@ def main() -> None:
             log.info("Last published source: %s", last_published_source)
 
     try:
-        items = fetch_feeds()
-        comment, story = _select_story(items, client, focus, performance_bonus, last_published_source)
+        stories = _load_news_json()
+        comment, story = _select_story(stories, client, focus, performance_bonus, last_published_source)
 
         if not comment:
             notify(
-                f"<b>AI LinkedIn Post</b>: no qualifying news (threshold={MIN_SCORE}/10 across 7 days). "
-                "Skipping — consider checking feed sources.",
+                "<b>AI LinkedIn Post</b>: no qualifying story found in today's digest. "
+                "Check site/news.json or re-run site_pipeline.py.",
                 tg_token, tg_chat,
             )
-            log.info("No qualifying news in 7 days — skipping LinkedIn post.")
+            log.info("No qualifying story — skipping LinkedIn post.")
             return
 
         log.info("Publishing: %s (score %s)", story["title"], story["score"])

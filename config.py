@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 RSS_FEEDS = {
     "OpenAI":             "https://openai.com/news/rss.xml",
@@ -106,6 +107,7 @@ BANNED_WORDS = [
 
 MIN_SCORE = 6
 RANKED_TOP_N = 5
+RANKED_SITE_TOP_N = 3
 
 LINKEDIN_API = "https://api.linkedin.com/rest/posts"
 LINKEDIN_IMAGES_API = "https://api.linkedin.com/rest/images?action=initializeUpload"
@@ -114,3 +116,47 @@ ANALYTICS_ENDPOINT = "https://api.linkedin.com/rest/memberCreatorPostAnalytics"
 HISTORY_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "history.json")
 ANALYTICS_MIN_AGE_DAYS = 7
 ANALYTICS_MAX_AGE_DAYS = 21
+
+# --- AI Coding Tools site pipeline ---
+
+_ROOT = Path(__file__).parent
+NEWS_JSON_PATH = _ROOT / "site" / "news.json"
+TEMPLATE_PATH = _ROOT / "site" / "template.html"
+SITE_OUTPUT_PATH = _ROOT / "site" / "index.html"
+
+# Changelog/release-notes pages scraped directly (no RSS)
+CHANGELOG_SOURCES = {
+    "Claude Code":      "https://docs.anthropic.com/en/release-notes/claude-code",
+    "Cursor":           "https://www.cursor.com/changelog",
+    "OpenAI Codex":     "https://platform.openai.com/docs/changelog",
+    "GitHub Copilot":   "https://docs.github.com/en/copilot/about-github-copilot/github-copilot-release-notes",
+    "Windsurf":         "https://codeium.com/blog",
+    "Aider":            "https://aider.chat/CHANGELOG.md",
+    "Continue.dev":     "https://github.com/continuedev/continue/releases",
+    "Amazon Q":         "https://aws.amazon.com/q/developer/",
+}
+
+# Claude Code docs pages used to generate self-made feature spotlight articles.
+# Each entry: (feature_name, url). Claude Sonnet reads the page and writes the article.
+CLAUDE_CODE_FEATURE_PAGES = [
+    ("Claude Code Hooks",          "https://docs.anthropic.com/en/docs/claude-code/hooks"),
+    ("Claude Code MCP",            "https://docs.anthropic.com/en/docs/claude-code/mcp"),
+    ("Claude Code Sub-agents",     "https://docs.anthropic.com/en/docs/claude-code/sub-agents"),
+    ("Claude Code Memory",         "https://docs.anthropic.com/en/docs/claude-code/memory"),
+    ("Claude Code GitHub Actions", "https://docs.anthropic.com/en/docs/claude-code/github-actions"),
+    ("Claude Code Slash Commands", "https://docs.anthropic.com/en/docs/claude-code/slash-commands"),
+    ("Claude Code Settings",       "https://docs.anthropic.com/en/docs/claude-code/settings"),
+    ("Claude Code Tutorials",      "https://docs.anthropic.com/en/docs/claude-code/tutorials"),
+]
+
+CODING_FOCUS_TOPICS = (
+    "Claude Code, Cursor IDE, GitHub Copilot, OpenAI Codex, Windsurf, Codeium, "
+    "Amazon Q Developer, Continue.dev, Aider, "
+    "AI coding tools, AI code generation, AI code completion, AI pair programming, "
+    "agentic coding, autonomous coding agents, coding agent frameworks, "
+    "AI IDE integration, AI-assisted development, developer productivity AI, "
+    "code review AI, AI refactoring, AI debugging, AI test generation, "
+    "MCP (model context protocol), tool use in coding agents, "
+    "AI terminal, AI CLI tools, AI shell assistants, "
+    "hooks, sub-agents, memory, slash commands, GitHub Actions integration"
+)
