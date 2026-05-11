@@ -16,7 +16,7 @@ _SYSTEM = (
 
 _RUBRIC_BASE = f"""\
 Score each story 0-10. Return ALL stories sorted by score descending.
-JSON format: {{"ranked": [{{"rank": 1, "score": 8, "title": "...", "url": "..."}}]}}
+JSON format: {{\"ranked\": [{{\"rank\": 1, \"score\": 8, \"title\": \"...\", \"url\": \"...\"}}]}}
 
 SOURCE BONUS (pick the highest that applies):
   +3  LLM Efficiency & Prompt Engineering: {", ".join(SOURCE_CATEGORIES["LLM Efficiency & Prompt Engineering"])}

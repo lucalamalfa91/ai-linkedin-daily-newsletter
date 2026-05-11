@@ -4,7 +4,7 @@
 Flow:
   1. Scrape changelog pages (8 sources) → Claude Haiku extracts items
   2. Scrape Claude Code feature docs → Claude Sonnet generates spotlight articles
-  3. Rank all items → top 3 (Claude Code gets priority boost)
+  3. Rank all items → top 5 (1 slot always Claude Code)
   4. Write summary + considerations for each → news.json + index.html
   5. Commit + push → Vercel auto-deploys
 """
@@ -126,7 +126,6 @@ def _enforce_claude_code_slot(
     cc_in_pool = [r for r in ranked if r["url"] in cc_links]
     other_in_pool = [r for r in ranked if r["url"] not in cc_links]
 
-    # Pick best CC candidate
     if cc_in_pool:
         best_cc = cc_in_pool[0]
     else:
@@ -144,7 +143,6 @@ def _enforce_claude_code_slot(
         best_cc = {"rank": top_n, "score": 5, "title": cc_item["title"], "url": cc_item["link"]}
         log.info("Injected Claude Code item: '%s'", best_cc["title"])
 
-    # Fill top_n-1 slots with best non-CC items, then append 1 CC item
     result = other_in_pool[: top_n - 1] + [best_cc]
     for i, r in enumerate(result, 1):
         r["rank"] = i
@@ -190,8 +188,6 @@ def main() -> None:
     # 2. Generate Claude Code feature spotlight articles
     spotlight_items = _generate_spotlights(client)
 
-    # Merge: spotlights first so the ranker sees them prominently.
-    # The ranking_agent prompt gives +3 to focus topics which includes Claude Code.
     all_items = spotlight_items + changelog_items
 
     if not all_items:
@@ -201,7 +197,7 @@ def main() -> None:
     log.info("Total items to rank: %d (%d spotlights + %d changelog)",
              len(all_items), len(spotlight_items), len(changelog_items))
 
-    # 3. Rank all items — the agent now returns ALL items sorted by score
+    # 3. Rank: ask for ALL items so Haiku never drops any by implicit quality threshold
     ranked = rank_stories(
         all_items,
         client,
@@ -225,7 +221,7 @@ def main() -> None:
     # Enforce exactly 1 Claude Code slot in the final top N
     ranked = _enforce_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
 
-    # Pad with remaining all_items if the ranker returned fewer than top_n unique items
+    # Pad with remaining all_items if fewer than top_n unique items came back
     if len(ranked) < RANKED_SITE_TOP_N:
         used_urls = {normalize_url(r["url"]) for r in ranked}
         for item in all_items:
@@ -244,7 +240,7 @@ def main() -> None:
             r["rank"] = i
         log.info("Padded ranked list to %d items from all_items pool", len(ranked))
 
-    # 4. Enrich top 3 with full summary + considerations
+    # 4. Enrich top 5 with full summary + considerations
     stories = []
     for candidate in ranked[:RANKED_SITE_TOP_N]:
         url = normalize_url(candidate.get("url", ""))
@@ -253,7 +249,6 @@ def main() -> None:
             continue
 
         candidate["url"] = url
-        # Match by title+URL first (multiple items can share the same changelog URL)
         title = candidate.get("title", "")
         original = (
             next((it for it in all_items if it["link"] == url and it["title"] == title), None)
@@ -303,10 +298,10 @@ def main() -> None:
     # 7. Commit and push (GitHub Actions only)
     _commit_and_push()
 
-    spotlights_in_top3 = sum(1 for s in stories if s.get("is_feature_spotlight"))
+    spotlights_in_top = sum(1 for s in stories if s.get("is_feature_spotlight"))
     log.info(
         "Site pipeline complete — %d stories (%d feature spotlights, %d changelogs)",
-        len(stories), spotlights_in_top3, len(stories) - spotlights_in_top3,
+        len(stories), spotlights_in_top, len(stories) - spotlights_in_top,
     )
 
 
