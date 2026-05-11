@@ -138,6 +138,10 @@ The static site (`site/index.html`) is a self-contained HTML/CSS page (no JavaSc
 
 Updated daily at 5 AM UTC. Deployed automatically via Vercel on every push to `main`.
 
+### Changelog Sources (8, scraped directly)
+
+Claude Code, Cursor, OpenAI Codex, GitHub Copilot, Windsurf, Aider, Continue.dev, Amazon Q
+
 ---
 
 ## LLM Model Usage
