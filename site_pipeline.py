@@ -108,6 +108,38 @@ def _write_news_json(data: dict) -> None:
     log.info("Wrote %s", path)
 
 
+def _guarantee_claude_code_slot(
+    ranked: list[dict],
+    all_items: list[dict],
+    top_n: int,
+) -> list[dict]:
+    """If no Claude Code item is in the top_n, inject the best one at position top_n."""
+    _cc_sources = {"Claude Code Docs", "Claude Code"}
+    cc_links = {it["link"] for it in all_items if it.get("source") in _cc_sources}
+
+    if any(r["url"] in cc_links for r in ranked[:top_n]):
+        return ranked
+
+    # Prefer a candidate already ranked (just below top_n), else use the first spotlight.
+    cc_ranked = [r for r in ranked if r["url"] in cc_links]
+    if cc_ranked:
+        best = cc_ranked[0]
+    else:
+        cc_item = next((it for it in all_items if it.get("_is_feature_spotlight")), None)
+        if not cc_item:
+            log.warning("No Claude Code item available to guarantee slot")
+            return ranked
+        best = {"rank": top_n, "score": 5, "title": cc_item["title"], "url": cc_item["link"]}
+
+    result = list(ranked[:top_n])
+    result[top_n - 1] = best
+    for i, r in enumerate(result, 1):
+        r["rank"] = i
+
+    log.info("Guaranteed Claude Code slot: injected '%s' at rank %d", best.get("title"), top_n)
+    return result
+
+
 def _commit_and_push() -> None:
     if not os.environ.get("GITHUB_ACTIONS"):
         log.info("Skipping git commit (not in GitHub Actions)")
@@ -164,6 +196,9 @@ def main() -> None:
     if not ranked:
         log.error("Ranking returned no results — aborting")
         sys.exit(1)
+
+    # Guarantee at least one Claude Code story in the top 3
+    ranked = _guarantee_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
 
     # 4. Enrich top 3 with full summary + considerations
     stories = []
