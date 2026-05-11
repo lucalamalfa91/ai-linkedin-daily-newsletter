@@ -4,219 +4,298 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Coding Tools Digest — {{ DATE }}</title>
-  <meta name="description" content="The 5 biggest AI coding tool updates, analyzed daily by Claude.">
+  <meta name="description" content="The 5 most important AI coding tool updates, analyzed daily by Claude.">
   <meta property="og:title" content="AI Coding Tools Digest — {{ DATE }}">
-  <meta property="og:description" content="The 5 biggest AI coding tool updates, analyzed daily.">
+  <meta property="og:description" content="5 stories. Daily analysis by Claude.">
   <meta property="og:type" content="website">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #f9f9f7;
-      --surface: #ffffff;
-      --border: #e8e8e4;
-      --text: #1a1a1a;
-      --muted: #6b6b6b;
-      --accent: #1a56db;
-      --accent-bg: #eff6ff;
-      --accent-border: #3b82f6;
-      --badge-bg: #f0fdf4;
-      --badge-text: #166534;
-      --rank-bg: #f3f4f6;
-      --rank-text: #374151;
+      --bg:            #F4F3EF;
+      --surface:       #FFFFFF;
+      --border:        #E4E3DF;
+      --text:          #111111;
+      --text-sub:      #444444;
+      --text-muted:    #888888;
+      --accent:        #2563EB;
+      --header-bg:     #0D1117;
+      --header-sub:    rgba(255,255,255,0.45);
+      --header-strong: rgba(255,255,255,0.85);
+      --take-bg:       #FFFBEB;
+      --take-border:   #F59E0B;
+      --take-label:    #92400E;
+      --source-bg:     #EFEFEB;
+      --source-text:   #333333;
+      --score-bg:      #ECFDF5;
+      --score-text:    #065F46;
     }
 
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #111111;
-        --surface: #1c1c1e;
-        --border: #2e2e30;
-        --text: #f0f0f0;
-        --muted: #9a9a9a;
-        --accent: #60a5fa;
-        --accent-bg: #1e2d4a;
-        --accent-border: #3b82f6;
-        --badge-bg: #14291f;
-        --badge-text: #6ee7b7;
-        --rank-bg: #2a2a2c;
-        --rank-text: #d1d5db;
+        --bg:            #101010;
+        --surface:       #1A1A1A;
+        --border:        #2B2B2B;
+        --text:          #EFEFEF;
+        --text-sub:      #AAAAAA;
+        --text-muted:    #666666;
+        --accent:        #60A5FA;
+        --header-bg:     #000000;
+        --header-sub:    rgba(255,255,255,0.35);
+        --header-strong: rgba(255,255,255,0.85);
+        --take-bg:       #1A1200;
+        --take-border:   #D97706;
+        --take-label:    #FCD34D;
+        --source-bg:     #222222;
+        --source-text:   #CCCCCC;
+        --score-bg:      #042F2E;
+        --score-text:    #6EE7B7;
       }
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.6;
-      padding: 2rem 1rem;
+      line-height: 1.65;
+      min-height: 100vh;
     }
 
-    .container {
-      max-width: 700px;
-      margin: 0 auto;
+    /* ── MASTHEAD ───────────────────────────────────────── */
+    .masthead {
+      background: var(--header-bg);
+      padding: 3rem 1.25rem 2.5rem;
+      text-align: center;
     }
 
-    header {
-      margin-bottom: 2.5rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 1.5rem;
-    }
+    .masthead-inner { max-width: 640px; margin: 0 auto; }
 
-    header h1 {
-      font-size: 1.5rem;
+    .masthead-eyebrow {
+      display: inline-block;
+      font-size: 0.65rem;
       font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.3rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--header-sub);
+      margin-bottom: 1rem;
+      border: 1px solid rgba(255,255,255,0.12);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
     }
 
-    header .subtitle {
-      color: var(--muted);
-      font-size: 0.9rem;
+    .masthead h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #FFFFFF;
+      margin-bottom: 0.6rem;
+      line-height: 1.1;
     }
 
-    header .subtitle strong {
-      color: var(--text);
+    .masthead-sub {
+      font-size: 0.875rem;
+      color: var(--header-sub);
     }
 
+    .masthead-sub strong { color: var(--header-strong); }
+
+    .masthead-divider {
+      width: 40px;
+      height: 2px;
+      background: rgba(255,255,255,0.12);
+      margin: 1.25rem auto 0;
+      border-radius: 2px;
+    }
+
+    /* ── LAYOUT ─────────────────────────────────────────── */
+    .container {
+      max-width: 660px;
+      margin: 0 auto;
+      padding: 2.25rem 1.25rem 1rem;
+    }
+
+    .feed-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.5rem;
+    }
+
+    /* ── STORY CARD ─────────────────────────────────────── */
     .story-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 1.5rem;
+      border-radius: 14px;
+      overflow: hidden;
       margin-bottom: 1.25rem;
-      transition: box-shadow 0.15s ease;
+      transition: box-shadow 0.15s ease, border-color 0.15s ease;
     }
 
     .story-card:hover {
-      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      border-color: #C8C7C3;
     }
 
     .card-image {
       width: 100%;
-      height: 180px;
+      height: 200px;
       object-fit: cover;
-      border-radius: 6px;
-      margin-bottom: 1rem;
       display: block;
+      border-bottom: 1px solid var(--border);
     }
 
-    .card-meta {
+    .card-body { padding: 1.4rem 1.5rem 1.3rem; }
+
+    /* Top row: rank · source · score */
+    .card-top {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.6rem;
+      gap: 0.45rem;
+      margin-bottom: 0.8rem;
+      flex-wrap: wrap;
     }
 
-    .rank {
-      font-size: 0.75rem;
-      font-weight: 600;
-      background: var(--rank-bg);
-      color: var(--rank-text);
-      padding: 0.2rem 0.55rem;
-      border-radius: 4px;
+    .rank-badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 0.18rem 0.5rem;
+      border-radius: 5px;
       letter-spacing: 0.03em;
     }
 
-    .score-badge {
-      font-size: 0.75rem;
+    .source-chip {
+      font-size: 0.7rem;
       font-weight: 600;
-      background: var(--badge-bg);
-      color: var(--badge-text);
-      padding: 0.2rem 0.55rem;
-      border-radius: 4px;
+      background: var(--source-bg);
+      color: var(--source-text);
+      padding: 0.18rem 0.65rem;
+      border-radius: 20px;
     }
 
-    .story-card h2 {
-      font-size: 1.05rem;
+    .score-chip {
+      font-size: 0.7rem;
       font-weight: 600;
+      background: var(--score-bg);
+      color: var(--score-text);
+      padding: 0.18rem 0.65rem;
+      border-radius: 20px;
+      margin-left: auto;
+    }
+
+    /* Title */
+    .story-title {
+      font-size: 1.08rem;
+      font-weight: 700;
       line-height: 1.35;
-      margin-bottom: 0.35rem;
+      letter-spacing: -0.015em;
+      margin-bottom: 0.3rem;
     }
 
-    .story-card h2 a {
-      color: var(--text);
-      text-decoration: none;
+    .story-title a { color: var(--text); text-decoration: none; }
+    .story-title a:hover { color: var(--accent); }
+
+    /* Date */
+    .story-date {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 0.9rem;
     }
 
-    .story-card h2 a:hover {
-      color: var(--accent);
-      text-decoration: underline;
-    }
-
-    .source-date {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 0.85rem;
-    }
-
-    .summary {
+    /* Summary */
+    .story-summary {
       font-size: 0.9rem;
-      color: var(--text);
-      line-height: 1.6;
-      margin-bottom: 0.85rem;
-    }
-
-    .considerations {
-      font-size: 0.875rem;
-      background: var(--accent-bg);
-      border-left: 3px solid var(--accent-border);
-      padding: 0.75rem 1rem;
-      border-radius: 0 6px 6px 0;
+      color: var(--text-sub);
+      line-height: 1.7;
       margin-bottom: 1rem;
-      color: var(--text);
-      line-height: 1.55;
     }
 
-    .considerations::before {
-      content: "Claude's take: ";
+    /* Claude's take */
+    .claude-take {
+      background: var(--take-bg);
+      border-left: 3px solid var(--take-border);
+      border-radius: 0 8px 8px 0;
+      padding: 0.8rem 1rem;
+      margin-bottom: 1.1rem;
+    }
+
+    .claude-take-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--take-label);
+      margin-bottom: 0.4rem;
+    }
+
+    .claude-take-text {
+      font-size: 0.875rem;
+      color: var(--text);
+      line-height: 1.62;
+    }
+
+    /* Read link */
+    .read-link {
+      font-size: 0.78rem;
       font-weight: 600;
       color: var(--accent);
-    }
-
-    .read-more {
-      font-size: 0.82rem;
-      color: var(--accent);
       text-decoration: none;
-      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
     }
 
-    .read-more:hover {
-      text-decoration: underline;
-    }
+    .read-link:hover { text-decoration: underline; }
 
-    footer {
-      margin-top: 2.5rem;
-      padding-top: 1.25rem;
+    /* ── FOOTER ─────────────────────────────────────────── */
+    .site-footer {
+      max-width: 660px;
+      margin: 1rem auto 0;
+      padding: 1.5rem 1.25rem 2.5rem;
       border-top: 1px solid var(--border);
-      font-size: 0.78rem;
-      color: var(--muted);
+      font-size: 0.72rem;
+      color: var(--text-muted);
       text-align: center;
-      line-height: 1.7;
+      line-height: 1.9;
     }
 
-    @media (max-width: 500px) {
-      header h1 { font-size: 1.25rem; }
-      .story-card { padding: 1.1rem; }
+    /* ── MOBILE ─────────────────────────────────────────── */
+    @media (max-width: 480px) {
+      .masthead h1     { font-size: 1.55rem; }
+      .card-body       { padding: 1.1rem; }
+      .card-image      { height: 160px; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
+
+  <header class="masthead">
+    <div class="masthead-inner">
+      <span class="masthead-eyebrow">Daily Digest</span>
       <h1>AI Coding Tools Digest</h1>
-      <p class="subtitle">
-        <strong>{{ DATE }}</strong> &mdash;
-        5 stories selected and analyzed daily from Claude Code, Cursor, Copilot, Windsurf, and more
+      <p class="masthead-sub">
+        <strong>{{ DATE }}</strong> &mdash; 5 stories selected and analyzed by Claude
       </p>
-    </header>
+      <div class="masthead-divider"></div>
+    </div>
+  </header>
+
+  <div class="container">
+    <p class="feed-label">Today&rsquo;s top stories</p>
     <main>
 {{ STORIES_HTML }}
     </main>
-    <footer>
-      Updated daily at 5&nbsp;AM UTC &middot;
-      Stories selected and analyzed by Claude &middot;
-      Last updated: {{ GENERATED_AT }}
-    </footer>
   </div>
+
+  <footer class="site-footer">
+    Updated daily at 5&nbsp;AM UTC &middot; Curated and analyzed by Claude &middot; Last updated: {{ GENERATED_AT }}
+  </footer>
+
 </body>
 </html>

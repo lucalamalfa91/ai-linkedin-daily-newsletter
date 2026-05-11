@@ -8,9 +8,30 @@ from config import LINKEDIN_IMAGES_API, LINKEDIN_VERSION
 
 log = logging.getLogger(__name__)
 
+_UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/124.0.0.0 Safari/537.36"
+)
+
+
+def _is_image_reachable(url: str) -> bool:
+    """Return True if the URL resolves to a reachable image (HEAD or GET)."""
+    try:
+        resp = requests.head(url, timeout=5, headers={"User-Agent": _UA}, allow_redirects=True)
+        if resp.ok and "image" in resp.headers.get("Content-Type", ""):
+            return True
+        # Some servers don't support HEAD — fall back to GET with minimal read
+        resp = requests.get(url, timeout=5, headers={"User-Agent": _UA}, stream=True)
+        ct = resp.headers.get("Content-Type", "")
+        return resp.ok and "image" in ct
+    except Exception:
+        return False
+
 
 def fetch_og_meta(url: str) -> dict:
     """Return og:image and og:description from url. Returns {} on any failure."""
+
     class _OGParser(HTMLParser):
         def __init__(self):
             super().__init__()
@@ -31,7 +52,7 @@ def fetch_og_meta(url: str) -> dict:
                 self.description = content
 
     try:
-        req = Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; ai-post-bot/1.0)"})
+        req = Request(url, headers={"User-Agent": _UA})
         with urlopen(req, timeout=10) as resp:
             ct = resp.headers.get("Content-Type", "")
             if "text/html" not in ct:
@@ -41,7 +62,11 @@ def fetch_og_meta(url: str) -> dict:
         parser.feed(html)
         result: dict = {}
         if parser.image.startswith("http"):
-            result["image"] = parser.image
+            # Validate that the image URL actually resolves
+            if _is_image_reachable(parser.image):
+                result["image"] = parser.image
+            else:
+                log.debug("og:image URL not reachable, skipping: %s", parser.image)
         if parser.description:
             desc = parser.description
             if len(desc) > 250:
