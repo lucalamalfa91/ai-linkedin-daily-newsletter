@@ -107,7 +107,7 @@ BANNED_WORDS = [
 
 MIN_SCORE = 6
 RANKED_TOP_N = 5
-RANKED_SITE_TOP_N = 3
+RANKED_SITE_TOP_N = 5
 
 LINKEDIN_API = "https://api.linkedin.com/rest/posts"
 LINKEDIN_IMAGES_API = "https://api.linkedin.com/rest/images?action=initializeUpload"
@@ -123,6 +123,20 @@ _ROOT = Path(__file__).parent
 NEWS_JSON_PATH = _ROOT / "site" / "news.json"
 TEMPLATE_PATH = _ROOT / "site" / "template.html"
 SITE_OUTPUT_PATH = _ROOT / "site" / "index.html"
+
+# Fallback og:image per source — used when the article/changelog URL returns no image.
+# These are the source's homepage or brand page, which reliably return a good og:image.
+CHANGELOG_SOURCE_HOMEPAGES = {
+    "Claude Code":      "https://www.anthropic.com",
+    "Claude Code Docs": "https://www.anthropic.com",
+    "Cursor":           "https://www.cursor.com",
+    "OpenAI Codex":     "https://openai.com",
+    "GitHub Copilot":   "https://github.com/features/copilot",
+    "Windsurf":         "https://codeium.com",
+    "Aider":            "https://aider.chat",
+    "Continue.dev":     "https://www.continue.dev",
+    "Amazon Q":         "https://aws.amazon.com/q/developer/",
+}
 
 # Changelog/release-notes pages scraped directly (no RSS)
 CHANGELOG_SOURCES = {

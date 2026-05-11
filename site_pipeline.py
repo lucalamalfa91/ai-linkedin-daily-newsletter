@@ -25,6 +25,7 @@ from agents.feature_spotlight_agent import generate_feature_spotlight
 from agents.ranking_agent import rank_stories
 from agents.site_writer_agent import write_site_entry
 from config import (
+    CHANGELOG_SOURCE_HOMEPAGES,
     CHANGELOG_SOURCES,
     CLAUDE_CODE_FEATURE_PAGES,
     CODING_FOCUS_TOPICS,
@@ -108,42 +109,49 @@ def _write_news_json(data: dict) -> None:
     log.info("Wrote %s", path)
 
 
-def _guarantee_claude_code_slot(
+def _enforce_claude_code_slot(
     ranked: list[dict],
     all_items: list[dict],
     top_n: int,
 ) -> list[dict]:
-    """If no Claude Code item is in the top_n, inject the best one at position top_n."""
+    """Enforce exactly 1 Claude Code item in the top_n results.
+
+    - If 0 CC items: inject the best available one at the last slot.
+    - If 2+ CC items: keep only the highest-ranked one, fill remaining slots
+      with the next best non-CC items from the ranked pool.
+    """
     _cc_sources = {"Claude Code Docs", "Claude Code"}
     cc_links = {it["link"] for it in all_items if it.get("source") in _cc_sources}
 
-    if any(r["url"] in cc_links for r in ranked[:top_n]):
-        return ranked
+    cc_in_pool = [r for r in ranked if r["url"] in cc_links]
+    other_in_pool = [r for r in ranked if r["url"] not in cc_links]
 
-    # Prefer a candidate already in the ranked list (below top_n), else pick from all_items.
-    cc_ranked = [r for r in ranked if r["url"] in cc_links]
-    if cc_ranked:
-        best = cc_ranked[0]
+    # Pick best CC candidate
+    if cc_in_pool:
+        best_cc = cc_in_pool[0]
     else:
-        # Spotlights first, then Claude Code changelog items
         cc_item = next(
-            (it for it in all_items if it.get("_is_feature_spotlight")),
-            None,
+            (it for it in all_items if it.get("_is_feature_spotlight")), None
         ) or next(
-            (it for it in all_items if it.get("source") in _cc_sources),
-            None,
+            (it for it in all_items if it.get("source") in _cc_sources), None
         )
         if not cc_item:
-            log.warning("No Claude Code item available to guarantee slot")
-            return ranked
-        best = {"rank": top_n, "score": 5, "title": cc_item["title"], "url": cc_item["link"]}
+            log.warning("No Claude Code item available — omitting guaranteed slot")
+            result = other_in_pool[:top_n]
+            for i, r in enumerate(result, 1):
+                r["rank"] = i
+            return result
+        best_cc = {"rank": top_n, "score": 5, "title": cc_item["title"], "url": cc_item["link"]}
+        log.info("Injected Claude Code item: '%s'", best_cc["title"])
 
-    result = list(ranked[:top_n])
-    result[top_n - 1] = best
+    # Fill top_n-1 slots with best non-CC items, then append 1 CC item
+    result = other_in_pool[: top_n - 1] + [best_cc]
     for i, r in enumerate(result, 1):
         r["rank"] = i
 
-    log.info("Guaranteed Claude Code slot: injected '%s' at rank %d", best.get("title"), top_n)
+    if len(cc_in_pool) > 1:
+        log.info("Capped Claude Code from %d to 1 item in top %d", len(cc_in_pool), top_n)
+
     return result
 
 
@@ -193,18 +201,19 @@ def main() -> None:
     log.info("Total items to rank: %d (%d spotlights + %d changelog)",
              len(all_items), len(spotlight_items), len(changelog_items))
 
-    # 3. Rank: pick top 3
+    # 3. Rank: request a buffer pool so deduplication and CC constraint don't leave us short
+    _rank_buffer = RANKED_SITE_TOP_N + 5
     ranked = rank_stories(
         all_items,
         client,
         focus_topics=CODING_FOCUS_TOPICS,
-        top_n=RANKED_SITE_TOP_N,
+        top_n=_rank_buffer,
     )
     if not ranked:
         log.error("Ranking returned no results — aborting")
         sys.exit(1)
 
-    # Deduplicate ranked list by URL (keep highest-ranked per URL)
+    # Deduplicate by URL (keep highest-ranked per URL)
     seen_urls: set[str] = set()
     deduped: list[dict] = []
     for r in ranked:
@@ -214,8 +223,8 @@ def main() -> None:
             deduped.append(r)
     ranked = deduped
 
-    # Guarantee at least one Claude Code story in the top 3
-    ranked = _guarantee_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
+    # Enforce exactly 1 Claude Code slot in the final top N
+    ranked = _enforce_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
 
     # 4. Enrich top 3 with full summary + considerations
     stories = []
@@ -233,7 +242,15 @@ def main() -> None:
             or next((it for it in all_items if it["link"] == url), None)
         )
 
+        source_name = original.get("source", "") if original else ""
         og = fetch_og_meta(url)
+        if not og.get("image") and source_name:
+            fallback_url = CHANGELOG_SOURCE_HOMEPAGES.get(source_name)
+            if fallback_url:
+                og = fetch_og_meta(fallback_url)
+                if og.get("image"):
+                    log.info("Used homepage fallback image for '%s'", source_name)
+
         enrichment = write_site_entry(candidate, original, client)
 
         stories.append({
@@ -241,7 +258,7 @@ def main() -> None:
             "score": candidate.get("score"),
             "title": candidate.get("title", ""),
             "url": url,
-            "source": original.get("source", "") if original else "",
+            "source": source_name,
             "summary": enrichment["summary"],
             "considerations": enrichment["considerations"],
             "published": original.get("published", "") if original else "",

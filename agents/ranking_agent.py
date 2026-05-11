@@ -110,7 +110,7 @@ def rank_stories(
     rubric = _RUBRIC_BASE.replace("__FOCUS_TOPICS__", active_topics[:120]).replace("__TOP_N__", str(n))
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=500,
+        max_tokens=800,
         temperature=0,
         system=_SYSTEM,
         messages=[
