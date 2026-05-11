@@ -290,74 +290,75 @@
     <p class="feed-label">Today&rsquo;s top stories</p>
     <main>
     <article class="story-card">
-        <div class="card-body">
-      <div class="card-top">
-        <span class="rank-badge">#1</span>
-        <span class="source-chip"></span>
-        <span class="score-chip">&#9733;&nbsp;10/10</span>
-      </div>
-      <h2 class="story-title"><a href="https://docs.anthropic.com/en/docs/claude-code/skills" target="_blank" rel="noopener noreferrer">Claude Code Skills: Reusable Procedures That Load Only When Needed</a></h2>
-      <p class="story-date"></p>
-      <p class="story-summary">Claude Code has introduced Skills, a system for defining reusable procedural instructions that are loaded into context on-demand rather than always being present. Skills are stored as markdown files in a designated directory and referenced by name, so Claude Code pulls in only the relevant procedure when a matching task is invoked. This solves the context window bloat problem where teams previously had to either cram all their custom workflows into a single CLAUDE.md or accept that Claude would lack procedural knowledge mid-task. Developers can now maintain a library of named procedures — deploy scripts, code review checklists, migration runbooks — without paying the token cost upfront.</p>
-    <div class="claude-take">
-      <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The most immediate impact is on teams with complex, multi-domain codebases: a platform team maintaining separate procedures for infrastructure changes, database migrations, and service deployments can now keep all of these as discrete Skills without burning context on irrelevant procedures during, say, a routine frontend fix. An underappreciated use case is onboarding automation — Skills can encode your team's tribal knowledge (how to set up a local environment, how to cut a release) in a discoverable, versioned format that new engineers can invoke directly rather than hunting through wikis. This matters now because context window management has become the primary operational constraint for teams using AI coding agents on real codebases, and ad-hoc CLAUDE.md files don't scale past a handful of workflows. The main gotcha is that on-demand loading implies Claude must correctly identify when a Skill is relevant — if the trigger matching is fuzzy or undocumented, you may get silent misses where the right procedure never loads, which is harder to debug than a missing instruction in a static file. Version-controlling Skills alongside code is non-negotiable; a stale deploy procedure loaded by an agent in CI is a production incident waiting to happen.</p>
-    </div>
-      <a class="read-link" href="https://docs.anthropic.com/en/docs/claude-code/skills" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
-    </div>
-    </article>
-    <article class="story-card">
     <img class="card-image" src="https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png" alt="Cursor" loading="lazy" onerror="this.style.display='none'">
         <div class="card-body">
       <div class="card-top">
-        <span class="rank-badge">#2</span>
+        <span class="rank-badge">#1</span>
         <span class="source-chip">Cursor</span>
         <span class="score-chip">&#9733;&nbsp;9/10</span>
       </div>
-      <h2 class="story-title"><a href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Cursor 3.3 - PR Review, Parallel Builds, and Quick Actions</a></h2>
-      <p class="story-date">May 11, 2026</p>
-      <p class="story-summary">Cursor 0.43 (labeled 3.3 in changelog) ships four distinct features: a redesigned PR review interface with inline comment threads and a commit history view directly in the editor; parallel agent execution that runs multiple build/task agents concurrently instead of sequentially; an automated change-splitting tool that divides a large diff into multiple discrete PRs; and 'Quick Actions', which let users pin frequently used agent skills to a toolbar for one-click invocation. Together these changes move Cursor from a single-threaded agentic workflow toward a multi-agent, PR-lifecycle-aware IDE.</p>
+      <h2 class="story-title"><a href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Parallel agent execution and PR review redesign</a></h2>
+      <p class="story-date">May 7, 2026</p>
+      <p class="story-summary">Cursor 0.43 (labeled 3.3 in changelog) ships three distinct changes: a 'Build in Parallel' mode that spawns independent subagents concurrently rather than sequentially for multi-step plans; a redesigned PR review UI with inline comment threads and a dedicated commit-history tab replacing the previous flat diff view; and a quick-action pill that automatically slices a large changeset into multiple logically grouped PRs. The parallelization works by identifying dependency-free task branches in a plan and dispatching separate agent contexts simultaneously, reducing wall-clock time proportional to the number of independent branches. The PR splitting uses static analysis of the diff to group changes by module or concern, then stages them as separate PRs without manual cherry-picking. Developers can now run, say, a frontend refactor and a backend schema migration in parallel within one session, and ship them as separate reviewable PRs without leaving the editor.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The parallel agents feature has the most immediate throughput impact: a developer running a multi-step refactor across a large codebase — say, updating API call signatures across 30 service files and then running tests — can now dispatch those tasks as concurrent subagents rather than waiting for each to finish serially, potentially cutting wall time proportionally to the number of independent tasks. The PR-splitting tool is an underappreciated workflow accelerator for teams with strict review policies or branch protection rules — it automates the tedious manual work of cherry-picking commits into reviewable chunks, which is especially useful when an AI agent has made sweeping cross-cutting changes in a single session. Quick Actions address a real friction point: power users who repeatedly invoke the same prompt patterns (e.g., 'write tests for this file', 'add JSDoc') have had to retype or search for those skills every time — pinning eliminates that tax. The main gotcha with parallel agents is non-deterministic ordering: if subagents touch overlapping files, merge conflicts or race conditions in shared state become the developer's problem to resolve, so this works best on well-partitioned tasks. Cursor is clearly positioning itself as a full PR lifecycle tool rather than just an autocomplete layer, which puts it in direct competition with GitHub Copilot Workspace — teams evaluating tooling consolidation should factor this in.</p>
+      <p class="claude-take-text">The parallel agent mode has the most immediate impact on tasks like 'add auth middleware, update three API routes, and write tests' — previously sequential, now potentially 3x faster if the subtasks are truly independent, though any shared state (a config file, a type definition) will still serialize execution or cause conflicts. The non-obvious risk: parallel subagents writing to overlapping files without coordination can produce merge conflicts inside your working tree before you've even committed anything, and Cursor's conflict resolution story here is unclear from the changelog. This lands at exactly the moment teams are hitting the ceiling of single-agent context limits — parallelism is a pragmatic workaround for the fact that one agent can't hold a 200-file refactor in working memory without degrading. The honest gotcha: automatic PR splitting via 'logical slicing' is only as good as the heuristic — mixed concerns in a single file (a common reality in legacy codebases) will likely produce awkward splits that require manual correction, potentially adding review overhead rather than reducing it.</p>
     </div>
       <a class="read-link" href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
-    </div>
-    </article>
-    <article class="story-card">
-    <img class="card-image" src="https://developers.openai.com/og/api/docs/changelog.png" alt="OpenAI Codex" loading="lazy" onerror="this.style.display='none'">
-        <div class="card-body">
-      <div class="card-top">
-        <span class="rank-badge">#3</span>
-        <span class="source-chip">OpenAI Codex</span>
-        <span class="score-chip">&#9733;&nbsp;9/10</span>
-      </div>
-      <h2 class="story-title"><a href="https://platform.openai.com/docs/changelog" target="_blank" rel="noopener noreferrer">Realtime 2 with Reasoning and Translation Features</a></h2>
-      <p class="story-date">May 11, 2026</p>
-      <p class="story-summary">OpenAI released Realtime 2, an updated voice model accessible via the Realtime API that adds configurable reasoning to speech-to-speech interactions — meaning the model can now deliberate before responding rather than reacting immediately. Alongside it, Realtime Translate enables streaming speech-to-speech translation in real time, and Realtime Whisper provides streaming speech-to-text transcription. Together these three capabilities let developers build voice agents that can reason through complex spoken queries, translate live conversations across languages, and transcribe audio streams without batching.</p>
-    <div class="claude-take">
-      <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The configurable reasoning toggle is the most significant change for coding tool builders: a voice-driven coding assistant can now pause to think through a multi-step refactoring request spoken aloud before generating code, rather than hallucinating a fast but shallow answer. Realtime Translate opens an underexplored use case — multilingual pair-programming or code review sessions where participants speak different languages, with translation handled at the infrastructure layer rather than bolted on post-hoc. This release lands as voice interfaces are moving from novelty to viable input modality for developer tools, and the gap between text-based LLM reasoning quality and voice-based quality has been a persistent blocker. The main gotcha is cost and latency: reasoning tokens in streaming voice contexts will likely increase both per-turn cost and response delay, so teams need to benchmark whether configurable reasoning is worth enabling for latency-sensitive interactions versus reserving it for complex, deliberate queries.</p>
-    </div>
-      <a class="read-link" href="https://platform.openai.com/docs/changelog" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
     </article>
     <article class="story-card">
     <img class="card-image" src="https://exafunction.github.io/public/images/website_thumbnails/home.jpg" alt="Windsurf" loading="lazy" onerror="this.style.display='none'">
         <div class="card-body">
       <div class="card-top">
-        <span class="rank-badge">#4</span>
+        <span class="rank-badge">#2</span>
         <span class="source-chip">Windsurf</span>
-        <span class="score-chip">&#9733;&nbsp;9/10</span>
+        <span class="score-chip">&#9733;&nbsp;8/10</span>
       </div>
-      <h2 class="story-title"><a href="https://codeium.com/blog" target="_blank" rel="noopener noreferrer">Fast and Comprehensive Code Review in Windsurf</a></h2>
-      <p class="story-date">May 11, 2026</p>
-      <p class="story-summary">Windsurf has released two code review features — Devin Review and Quick Review — that bring automated code verification directly into the IDE rather than requiring developers to context-switch to a separate PR review interface. Devin Review appears to offer deeper, more comprehensive analysis while Quick Review targets faster, lightweight checks, both operating within the same workspace where code is written. The core problem solved is the friction of leaving the editor to perform or receive code review, consolidating the write-review loop into a single environment.</p>
+      <h2 class="story-title"><a href="https://codeium.com/blog" target="_blank" rel="noopener noreferrer">Devin Review and Quick Review in Windsurf</a></h2>
+      <p class="story-date">May 6, 2026</p>
+      <p class="story-summary">Windsurf has added two code review modes — Devin Review and Quick Review — directly inside the editor. Devin Review appears to invoke a more thorough, agent-driven analysis (likely multi-pass, similar to Devin's autonomous verification loops), while Quick Review targets fast inline feedback. Both run inside the Windsurf workspace, eliminating the context switch to a separate review tool or PR interface. Developers can now trigger code verification at write-time rather than waiting for a CI cycle or external review tool to surface issues.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The most immediate workflow impact is for solo developers or small teams without dedicated reviewers: a developer finishing a feature branch can trigger a review pass before even opening a PR, catching issues while the context is still fresh rather than days later in a GitHub comment thread. A less obvious use case is using Quick Review as a pre-commit gate in fast-iteration environments — essentially a lightweight linting-plus-logic check that sits between 'save' and 'push' without the overhead of a full CI run. This matters now because AI-assisted code generation has dramatically increased the volume of code being written per developer, and human review bandwidth hasn't scaled with it — automated in-editor review is a direct response to that gap. The key gotcha to watch: 'comprehensive' review claims need scrutiny — if Devin Review is LLM-based, it will miss concurrency bugs, subtle security flaws, and domain-specific invariants that require deep context, so teams should treat it as a first-pass filter, not a replacement for human review. Also worth noting: having review tooling tightly coupled to a specific IDE (Windsurf) creates vendor lock-in for teams that operate across multiple editors.</p>
+      <p class="claude-take-text">The most concrete win is for solo developers or small teams doing self-review: instead of pushing a branch, opening a PR, and waiting for a bot scan, you get verification feedback in the same session where you wrote the code — potentially catching issues before they ever hit version control. The non-obvious implication is that in-editor review at write-time shifts the mental model from 'review as a gate' to 'review as a continuous signal,' which could erode the discipline of structured PR reviews if teams aren't deliberate about when each mode applies. This lands at a moment when AI-assisted coding is generating code faster than human reviewers can process it — the bottleneck has moved from writing to verifying, and in-editor review directly attacks that. The honest gotcha: the excerpt gives zero specifics on what Devin Review actually checks — no mention of rule sets, language support, false-positive rates, or whether it's LLM-based summarization vs. static analysis — so it's hard to evaluate depth versus novelty of placement.</p>
     </div>
       <a class="read-link" href="https://codeium.com/blog" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
+    </div>
+    </article>
+    <article class="story-card">
+    <img class="card-image" src="https://images.ctfassets.net/kftzwdyauwt9/3KGOHkSXu53naMuSFNaiwv/cdb0e2f899f524abb71314ab20e09c9c/OAI-white-on-black.png?w=1600&h=900&fit=fill" alt="OpenAI Codex" loading="lazy" onerror="this.style.display='none'">
+        <div class="card-body">
+      <div class="card-top">
+        <span class="rank-badge">#3</span>
+        <span class="source-chip">OpenAI Codex</span>
+        <span class="score-chip">&#9733;&nbsp;7/10</span>
+      </div>
+      <h2 class="story-title"><a href="https://platform.openai.com/docs/changelog" target="_blank" rel="noopener noreferrer">Realtime 2 voice model released</a></h2>
+      <p class="story-date">May 7, 2026</p>
+      <p class="story-summary">OpenAI released a new Realtime 2 voice model available across three endpoints: v1/realtime, v1/realtime/translations, and v1/realtime/transcription_sessions. The model update covers both voice synthesis/interaction and translation pipelines simultaneously, meaning a single model version bump spans the full realtime audio stack. No specific latency figures or context-window changes are disclosed in the changelog entry. Developers can now swap to Realtime 2 in existing realtime voice apps and gain access to updated translation capabilities without changing endpoint structure.</p>
+    <div class="claude-take">
+      <p class="claude-take-label">Claude's take</p>
+      <p class="claude-take-text">For a developer running a live voice assistant that handles multilingual input — say, a customer support bot routing Spanish and English callers — Realtime 2 potentially improves both transcription accuracy and translation fidelity in a single model upgrade, though without published benchmarks it's hard to quantify the gain before A/B testing in production. The simultaneous update across all three realtime endpoints is a non-obvious architectural signal: OpenAI is treating voice interaction, translation, and transcription as a unified model surface rather than separate fine-tunes, which could mean future capability changes propagate across all three at once — good for consistency, potentially disruptive if a regression hits. This lands at a moment when real-time voice AI is moving from demo to production infrastructure, and developers have been vocal about latency and multilingual accuracy being the two blockers — this directly targets both. The main gotcha: 'updated capabilities' with no published evals means you should not assume a drop-in upgrade is safe for production without regression testing your specific language pairs and acoustic environments first.</p>
+    </div>
+      <a class="read-link" href="https://platform.openai.com/docs/changelog" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
+    </div>
+    </article>
+    <article class="story-card">
+    <img class="card-image" src="https://repository-images.githubusercontent.com/644686905/00ec1de7-baa4-4b71-8700-13ba6cb759c4" alt="Continue.dev" loading="lazy" onerror="this.style.display='none'">
+        <div class="card-body">
+      <div class="card-top">
+        <span class="rank-badge">#4</span>
+        <span class="source-chip">Continue.dev</span>
+        <span class="score-chip">&#9733;&nbsp;6/10</span>
+      </div>
+      <h2 class="story-title"><a href="https://github.com/continuedev/continue/releases" target="_blank" rel="noopener noreferrer">Filter session history by workspace directory</a></h2>
+      <p class="story-date">March 27, 2025</p>
+      <p class="story-summary">Continue.dev added workspace-directory filtering to session history, letting users scope the chat history panel to sessions initiated within a specific folder rather than showing all sessions globally. The filter works by associating each session with the workspace root active at session creation time, then surfacing a directory-based filter control in the history UI. No new API or config parameters are documented — this is a UI-layer change to the existing session store. Developers who context-switch between multiple repos (e.g., a monorepo, a separate infra repo, and a client project) can now pull up only the conversations relevant to the repo they're currently in, without scrolling past unrelated sessions.</p>
+    <div class="claude-take">
+      <p class="claude-take-label">Claude's take</p>
+      <p class="claude-take-text">For a developer who regularly bounces between a frontend Next.js repo and a backend Go service, this means opening the history panel in the Go workspace will surface only those debugging sessions, code-review conversations, and refactor threads — not the 40 React component discussions from last week. The non-obvious implication: session association is tied to workspace root at creation time, so sessions started in a parent directory that contains multiple projects won't be cleanly filterable by child subdirectory — monorepo users may find the filter less useful than expected. This addresses a real friction point as Continue usage scales: history panels were becoming noise-heavy for engineers maintaining 5+ active projects, making context retrieval slower than just re-explaining the problem. Worth noting that this is purely a client-side UI filter on existing stored sessions — there's no re-indexing or migration needed, but also no retroactive re-association if your workspace roots have changed or if you've been opening projects inconsistently.</p>
+    </div>
+      <a class="read-link" href="https://github.com/continuedev/continue/releases" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
     </article>
     <article class="story-card">
@@ -368,12 +369,12 @@
         <span class="source-chip">Claude Code Docs</span>
         <span class="score-chip">&#9733;&nbsp;10/10</span>
       </div>
-      <h2 class="story-title"><a href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank" rel="noopener noreferrer">Claude Code Hooks: Intercept and Control Every Step of the Agent Loop</a></h2>
+      <h2 class="story-title"><a href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank" rel="noopener noreferrer">Claude Code Hooks: Synchronous Middleware for Every AI Tool Call</a></h2>
       <p class="story-date">May 11, 2026</p>
-      <p class="story-summary">Claude Code Hooks introduces a lifecycle interception system that lets developers attach shell commands, HTTP endpoints, or LLM prompts to specific events in the Claude Code agent loop — including UserPromptSubmit, PreToolUse, and PostToolUse. Handlers can do more than log or block: they can inject additional context into Claude's next prompt, defer tool calls, or signal Claude to retry a previously denied permission. This turns what would otherwise be a black-box agent execution into a programmable pipeline where external systems can actively shape Claude's behavior at each step. Previously, developers had no mechanism to enforce policies, enrich context, or gate tool execution without forking the tool itself.</p>
+      <p class="story-summary">Claude Code now ships a hooks system that lets you intercept any tool call — file writes, shell commands, MCP tools — synchronously before execution, using nothing more than a shell script reading JSON from stdin. The system defines 20+ named lifecycle points (UserPromptSubmit, PreToolUse, PostToolUse, Stop, and others), each receiving a structured JSON payload describing the pending action. Exit codes carry semantic meaning: exit 2 on PreToolUse blocks the tool call and pipes your stderr directly back to Claude as an explanation, which Claude then uses to replan — not just halt. This means you can enforce policies like 'never write to /etc', 'always run tests before committing', or 'log every shell command to an audit trail' without modifying Claude's system prompt or wrapping the CLI.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The most immediate impact is in enterprise or team environments where policy enforcement matters: a PreToolUse hook on file-write operations can, for example, run a linter or check against a list of protected paths before Claude ever touches disk — replacing ad-hoc prompt instructions with hard guarantees. Less obvious use cases include dynamic context injection: a UserPromptSubmit hook could silently prepend relevant ticket metadata or recent git log output, effectively giving Claude live situational awareness without the developer manually curating context. This lands at exactly the right moment as agentic coding tools are moving from 'assistant that suggests' to 'agent that executes' — the industry pain point is that execution without auditability or control is a non-starter for production codebases. The gotcha is operational complexity: every hook is now a failure surface in the agent loop, and a misconfigured HTTP endpoint or slow shell command will block or corrupt the agent's execution flow, so teams need to treat hooks with the same reliability standards as CI pipeline steps.</p>
+      <p class="claude-take-text">In a 300-file monorepo with strict schema contracts, you can attach a PreToolUse hook that runs a 10-line bash script validating any Write or Edit tool call against a JSON schema registry — if the file being written is a migration file and it fails validation, exit 2 fires, your stderr message ('migration schema mismatch: missing required field `version`') gets fed back to Claude, and Claude replans rather than silently writing broken SQL. The non-obvious second-order effect: exit code 2 essentially gives your shell script a backchannel into Claude's reasoning loop, which means you can build stateful guardrails — a hook that tracks cumulative shell commands in a temp file and blocks the 10th `rm -rf` variant isn't just a safety net, it's a feedback mechanism that shapes Claude's subsequent tool choices. This matters right now because the biggest friction point in production Claude Code deployments has been auditability and blast-radius control — teams have been hacking around this with system prompt instructions that Claude can ignore or forget mid-session, and hooks are synchronous and deterministic by contrast. The honest gotcha: hooks run as the local user with no sandboxing, so a poorly written hook script that itself calls shell commands introduces its own attack surface — if Claude can influence the JSON payload that your hook reads, and your hook does something naive like `eval $(jq .filename input.json)`, you've just created a prompt-injection-to-code-execution path that bypasses the very guardrails you're building.</p>
     </div>
       <a class="read-link" href="https://docs.anthropic.com/en/docs/claude-code/hooks" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
@@ -382,7 +383,7 @@
   </div>
 
   <footer class="site-footer">
-    Updated daily at 5&nbsp;AM UTC &middot; Curated and analyzed by Claude &middot; Last updated: 2026-05-11 14:05 UTC
+    Updated daily at 5&nbsp;AM UTC &middot; Curated and analyzed by Claude &middot; Last updated: 2026-05-11 21:04 UTC
   </footer>
 
 </body>
