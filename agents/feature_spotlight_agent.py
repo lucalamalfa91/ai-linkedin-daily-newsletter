@@ -13,18 +13,26 @@ log = logging.getLogger(__name__)
 _SYSTEM = """\
 You write feature spotlight articles for senior software developers.
 Given a Claude Code documentation page, write a self-contained article that a developer
-would genuinely find worth reading — not a paraphrase of the docs.
+would genuinely find worth reading and forward to their team.
 
-Your article must cover:
-- What the feature does and how it actually works (the mechanism, not just the effect)
-- The most interesting or non-obvious aspect that the docs bury or understate
-- At least one concrete developer scenario: a specific task or workflow where this feature
-  changes the outcome (e.g. "When running a 200-file migration, hooks let you validate
-  each write before it lands — catching schema drift before it accumulates")
-- Practical implications: when to use it, what it replaces, any gotchas or limits
+Your article must not paraphrase the docs. Instead, it must answer:
+1. What does this feature actually do at the mechanism level — not the marketing summary?
+   (e.g. "hooks intercept every tool call before execution, giving you a synchronous
+   checkpoint to validate, log, or abort — without patching Claude's internals")
+2. What is the single most interesting or non-obvious thing about this feature that the
+   docs bury, understate, or leave for the reader to figure out?
+3. One concrete developer scenario: a specific task, codebase, or pipeline where this
+   feature changes the outcome. Be specific — name file counts, error types, latency,
+   the stage in the workflow. Generic "it helps with X" is not acceptable.
+4. What does this replace or make obsolete? What's the honest gotcha or limit?
 
-Tone: like a knowledgeable colleague who just spent an hour with the docs and is
-sharing the useful parts — direct, specific, no marketing language.
+Hook: The opening hook should be a single punchy sentence that a developer would
+immediately want to share — something that reframes the feature in a way the docs don't.
+Example: "Claude Code hooks are basically middleware for your AI pair programmer —
+and they run synchronously, which means you can actually block bad writes."
+
+Tone: knowledgeable colleague who just spent an hour with the docs and is cutting
+through the noise — direct, specific, occasionally surprising.
 Reply ONLY with valid JSON — no markdown fences, no extra text."""
 
 _PROMPT = """\
@@ -37,12 +45,14 @@ Documentation text (truncated):
 
 Write a feature spotlight article. Return JSON:
 {{
-  "title": "compelling title max 12 words, starts with 'Claude Code'",
-  "summary": "3-4 sentences: what it is, how it works technically, and one concrete developer scenario",
-  "hook": "1 sentence: the most interesting or non-obvious thing about this feature — something a developer would forward to their team"
+  "title": "compelling title max 12 words — starts with the feature name, not 'Claude Code'",
+  "hook": "1 punchy sentence: the most interesting or non-obvious thing — something a developer would forward to their team",
+  "summary": "3-4 sentences: what it does (mechanism), the non-obvious insight, one concrete developer scenario with specifics, honest trade-off or limit",
+  "cta": "1 sentence: what should the reader do or explore next — be specific (e.g. 'Try adding a hook that validates JSON schema before any file write')"
 }}
 
-If the page has insufficient content, return {{"title": "", "summary": "", "hook": ""}}"""
+If the page has insufficient content to write something genuinely insightful, return
+{{"title": "", "hook": "", "summary": "", "cta": ""}}"""
 
 
 def generate_feature_spotlight(
@@ -68,7 +78,7 @@ def generate_feature_spotlight(
     try:
         msg = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=500,
+            max_tokens=600,
             temperature=0.4,
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[
@@ -88,7 +98,9 @@ def generate_feature_spotlight(
         return None
 
     hook = data.get("hook", "").strip()
-    full_summary = f"{hook} {summary}".strip() if hook else summary
+    cta = data.get("cta", "").strip()
+    parts = [p for p in [hook, summary, cta] if p]
+    full_summary = " ".join(parts)
 
     log.info("feature_spotlight: generated article '%s'", title)
     return {

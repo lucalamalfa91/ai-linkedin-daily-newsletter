@@ -127,20 +127,24 @@ SITE_OUTPUT_PATH = _ROOT / "site" / "index.html"
 # Fallback og:image per source — used when the article/changelog URL returns no image.
 # These are the source's homepage or brand page, which reliably return a good og:image.
 CHANGELOG_SOURCE_HOMEPAGES = {
-    "Claude Code":      "https://www.anthropic.com",
-    "Claude Code Docs": "https://www.anthropic.com",
-    "Cursor":           "https://www.cursor.com",
-    "OpenAI Codex":     "https://openai.com",
-    "GitHub Copilot":   "https://github.com/features/copilot",
-    "Windsurf":         "https://codeium.com",
-    "Aider":            "https://aider.chat",
-    "Continue.dev":     "https://www.continue.dev",
-    "Amazon Q":         "https://aws.amazon.com/q/developer/",
+    "Claude Code":        "https://www.anthropic.com",
+    "Claude Code Docs":   "https://www.anthropic.com",
+    "Claude API":         "https://www.anthropic.com",
+    "Cursor":             "https://www.cursor.com",
+    "OpenAI Codex":       "https://openai.com",
+    "GitHub Copilot":     "https://github.com/features/copilot",
+    "Windsurf":           "https://codeium.com",
+    "Aider":              "https://aider.chat",
+    "Continue.dev":       "https://www.continue.dev",
+    "Amazon Q":           "https://aws.amazon.com/q/developer/",
 }
 
-# Changelog/release-notes pages scraped directly (no RSS)
+# Changelog/release-notes pages scraped directly (no RSS).
+# Each URL should point to a "what's new" or release-notes page — not a generic blog
+# or marketing page — so the extractor finds dated, concrete changes.
 CHANGELOG_SOURCES = {
     "Claude Code":      "https://docs.anthropic.com/en/release-notes/claude-code",
+    "Claude API":       "https://docs.anthropic.com/en/whats-new",
     "Cursor":           "https://www.cursor.com/changelog",
     "OpenAI Codex":     "https://platform.openai.com/docs/changelog",
     "GitHub Copilot":   "https://docs.github.com/en/copilot/about-github-copilot/github-copilot-release-notes",
