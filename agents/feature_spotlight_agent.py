@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 
 import anthropic
 
+from utils.json_utils import strip_json_fences
+
 log = logging.getLogger(__name__)
 
 _SYSTEM = """\
@@ -71,10 +73,9 @@ def generate_feature_spotlight(
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[
                 {"role": "user", "content": prompt},
-                {"role": "assistant", "content": "{"},
             ],
         )
-        raw = "{" + msg.content[0].text.strip()
+        raw = strip_json_fences(msg.content[0].text)
         data = json.loads(raw)
     except Exception as exc:
         log.warning("feature_spotlight: LLM failed for %s: %s", feature_name, exc)

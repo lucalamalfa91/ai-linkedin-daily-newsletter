@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 
 import anthropic
 
+from utils.json_utils import strip_json_fences
+
 log = logging.getLogger(__name__)
 
 _SYSTEM = (
@@ -55,10 +57,9 @@ def extract_changelog_items(
             system=_SYSTEM,
             messages=[
                 {"role": "user", "content": prompt},
-                {"role": "assistant", "content": "{"},
             ],
         )
-        raw = "{" + msg.content[0].text.strip()
+        raw = strip_json_fences(msg.content[0].text)
         data = json.loads(raw)
         items = data.get("items", [])
     except Exception as exc:
