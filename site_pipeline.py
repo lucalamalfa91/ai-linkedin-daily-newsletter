@@ -201,13 +201,12 @@ def main() -> None:
     log.info("Total items to rank: %d (%d spotlights + %d changelog)",
              len(all_items), len(spotlight_items), len(changelog_items))
 
-    # 3. Rank: request a buffer pool so deduplication and CC constraint don't leave us short
-    _rank_buffer = RANKED_SITE_TOP_N + 5
+    # 3. Rank all items — the agent now returns ALL items sorted by score
     ranked = rank_stories(
         all_items,
         client,
         focus_topics=CODING_FOCUS_TOPICS,
-        top_n=_rank_buffer,
+        top_n=len(all_items),
     )
     if not ranked:
         log.error("Ranking returned no results — aborting")
@@ -225,6 +224,25 @@ def main() -> None:
 
     # Enforce exactly 1 Claude Code slot in the final top N
     ranked = _enforce_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
+
+    # Pad with remaining all_items if the ranker returned fewer than top_n unique items
+    if len(ranked) < RANKED_SITE_TOP_N:
+        used_urls = {normalize_url(r["url"]) for r in ranked}
+        for item in all_items:
+            if len(ranked) >= RANKED_SITE_TOP_N:
+                break
+            u = normalize_url(item.get("link", ""))
+            if u and u not in used_urls and is_valid_url(u):
+                ranked.append({
+                    "rank": len(ranked) + 1,
+                    "score": 5,
+                    "title": item["title"],
+                    "url": u,
+                })
+                used_urls.add(u)
+        for i, r in enumerate(ranked, 1):
+            r["rank"] = i
+        log.info("Padded ranked list to %d items from all_items pool", len(ranked))
 
     # 4. Enrich top 3 with full summary + considerations
     stories = []

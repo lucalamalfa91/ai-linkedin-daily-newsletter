@@ -15,7 +15,8 @@ _SYSTEM = (
 )
 
 _RUBRIC_BASE = f"""\
-Score each story 0-10. Return JSON: {{"ranked": [{{"rank": 1, "score": 8, "title": "...", "url": "..."}}]}}
+Score each story 0-10. Return ALL stories sorted by score descending.
+JSON format: {{"ranked": [{{"rank": 1, "score": 8, "title": "...", "url": "..."}}]}}
 
 SOURCE BONUS (pick the highest that applies):
   +3  LLM Efficiency & Prompt Engineering: {", ".join(SOURCE_CATEGORIES["LLM Efficiency & Prompt Engineering"])}
@@ -45,7 +46,7 @@ LINKEDIN VALUE:
   +1  Positions author as knowledgeable and ahead
   -2  Looks like reposting a press release
 
-Cap 10, floor 0. Return top __TOP_N__ only. Copy URLs exactly — never invent one.\
+Cap 10, floor 0. Include every story — never drop any. Copy URLs exactly — never invent one.\
 """
 
 
@@ -107,10 +108,10 @@ def rank_stories(
             f"SOURCE DIVERSITY: '{last_published_source}' published last week — apply -1 to avoid repetition."
         )
 
-    rubric = _RUBRIC_BASE.replace("__FOCUS_TOPICS__", active_topics[:120]).replace("__TOP_N__", str(n))
+    rubric = _RUBRIC_BASE.replace("__FOCUS_TOPICS__", active_topics[:120])
     msg = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=800,
+        max_tokens=1500,
         temperature=0,
         system=_SYSTEM,
         messages=[
