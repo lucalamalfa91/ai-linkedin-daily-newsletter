@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-11T10:02:58.542588+00:00",
+  "generated_at": "2026-05-11T10:08:54.480485+00:00",
   "date": "2026-05-11",
   "stories": [
     {
@@ -10,7 +10,7 @@
       "source": "Cursor",
       "summary": "New PR review experience with inline threads and commit history view, ability to execute plans in parallel using async subagents, and quick-action pills for splitting changes into PRs and pinning skills.",
       "considerations": "",
-      "published": "2026-05-07",
+      "published": "2026-05-11T10:08:41.053679+00:00",
       "og_image": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png",
       "is_feature_spotlight": false
     },
@@ -22,19 +22,19 @@
       "source": "OpenAI Codex",
       "summary": "Released Realtime 2, a new realtime voice model with configurable reasoning for speech-to-speech agents. Also launched Realtime Translate for streaming speech translation and Realtime Whisper for streaming speech-to-text.",
       "considerations": "",
-      "published": "2026-05-07",
+      "published": "2026-05-11T10:08:42.695734+00:00",
       "og_image": null,
       "is_feature_spotlight": false
     },
     {
       "rank": 3,
-      "score": 9,
+      "score": 8,
       "title": "Enterprise Model Controls and Spend Management Updates",
       "url": "https://www.cursor.com/changelog",
       "source": "Cursor",
       "summary": "New PR review experience with inline threads and commit history view, ability to execute plans in parallel using async subagents, and quick-action pills for splitting changes into PRs and pinning skills.",
       "considerations": "",
-      "published": "2026-05-07",
+      "published": "2026-05-11T10:08:41.053679+00:00",
       "og_image": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png",
       "is_feature_spotlight": false
     }
