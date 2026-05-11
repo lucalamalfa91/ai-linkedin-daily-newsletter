@@ -10,13 +10,19 @@ log = logging.getLogger(__name__)
 
 _SYSTEM = """\
 You write feature spotlight articles for senior software developers.
-Given a Claude Code documentation page, produce a self-contained article that:
-- Explains what the feature does concisely (not a copy of the docs)
-- Highlights the most interesting or non-obvious aspects
-- Gives a concrete example use case developers will recognise
-- Points out limitations or gotchas worth knowing
+Given a Claude Code documentation page, write a self-contained article that a developer
+would genuinely find worth reading — not a paraphrase of the docs.
 
-Tone: like a knowledgeable colleague sharing something useful, not a press release.
+Your article must cover:
+- What the feature does and how it actually works (the mechanism, not just the effect)
+- The most interesting or non-obvious aspect that the docs bury or understate
+- At least one concrete developer scenario: a specific task or workflow where this feature
+  changes the outcome (e.g. "When running a 200-file migration, hooks let you validate
+  each write before it lands — catching schema drift before it accumulates")
+- Practical implications: when to use it, what it replaces, any gotchas or limits
+
+Tone: like a knowledgeable colleague who just spent an hour with the docs and is
+sharing the useful parts — direct, specific, no marketing language.
 Reply ONLY with valid JSON — no markdown fences, no extra text."""
 
 _PROMPT = """\
@@ -30,11 +36,11 @@ Documentation text (truncated):
 Write a feature spotlight article. Return JSON:
 {{
   "title": "compelling title max 12 words, starts with 'Claude Code'",
-  "summary": "2-3 sentences: what it is and the key insight developers should know",
-  "hook": "1 sentence: the most interesting or surprising thing about this feature"
+  "summary": "3-4 sentences: what it is, how it works technically, and one concrete developer scenario",
+  "hook": "1 sentence: the most interesting or non-obvious thing about this feature — something a developer would forward to their team"
 }}
 
-If the page has insufficient content to write about, return {{"title": "", "summary": "", "hook": ""}}"""
+If the page has insufficient content, return {{"title": "", "summary": "", "hook": ""}}"""
 
 
 def generate_feature_spotlight(
@@ -60,7 +66,7 @@ def generate_feature_spotlight(
     try:
         msg = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=300,
+            max_tokens=500,
             temperature=0.4,
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[
@@ -90,5 +96,5 @@ def generate_feature_spotlight(
         "link": page_url,
         "summary": full_summary,
         "published": datetime.now(timezone.utc).isoformat(),
-        "_is_feature_spotlight": True,  # used by ranking to apply Claude Code boost
+        "_is_feature_spotlight": True,
     }
