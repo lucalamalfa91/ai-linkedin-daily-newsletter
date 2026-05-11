@@ -5,6 +5,7 @@ import re
 import anthropic
 
 from config import FOCUS_TOPICS, RANKED_TOP_N, SOURCE_CATEGORIES
+from utils.json_utils import strip_json_fences
 
 log = logging.getLogger(__name__)
 
@@ -120,10 +121,9 @@ def rank_stories(
                     {"type": "text", "text": "\n\n".join(dynamic_parts)},
                 ],
             },
-            {"role": "assistant", "content": "{"},
         ],
     )
-    raw = "{" + msg.content[0].text.strip()
+    raw = strip_json_fences(msg.content[0].text)
     log.debug("Ranking raw: %s", raw)
     try:
         return json.loads(raw).get("ranked", [])

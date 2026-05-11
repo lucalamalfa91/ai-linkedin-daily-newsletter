@@ -3,6 +3,8 @@ import logging
 
 import anthropic
 
+from utils.json_utils import strip_json_fences
+
 log = logging.getLogger(__name__)
 
 _SYSTEM = """\
@@ -56,10 +58,9 @@ def write_site_entry(
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[
                 {"role": "user", "content": user_content},
-                {"role": "assistant", "content": "{"},
             ],
         )
-        raw = "{" + msg.content[0].text.strip()
+        raw = strip_json_fences(msg.content[0].text)
         data = json.loads(raw)
         return {
             "summary": data.get("summary", "").strip(),
