@@ -76,7 +76,7 @@ def extract_changelog_items(
             "title": title,
             "link": source_url,
             "summary": item.get("summary", "").strip(),
-            "published": item.get("date") or today,
+            "published": today,
         })
 
     log.info("changelog_agent: %d items from %s", len(results), source_name)
