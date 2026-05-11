@@ -36,7 +36,7 @@ def write_site_entry(
     try:
         msg = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=300,
+            max_tokens=500,
             temperature=0.3,
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[

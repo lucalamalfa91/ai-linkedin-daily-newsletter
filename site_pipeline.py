@@ -120,12 +120,19 @@ def _guarantee_claude_code_slot(
     if any(r["url"] in cc_links for r in ranked[:top_n]):
         return ranked
 
-    # Prefer a candidate already ranked (just below top_n), else use the first spotlight.
+    # Prefer a candidate already in the ranked list (below top_n), else pick from all_items.
     cc_ranked = [r for r in ranked if r["url"] in cc_links]
     if cc_ranked:
         best = cc_ranked[0]
     else:
-        cc_item = next((it for it in all_items if it.get("_is_feature_spotlight")), None)
+        # Spotlights first, then Claude Code changelog items
+        cc_item = next(
+            (it for it in all_items if it.get("_is_feature_spotlight")),
+            None,
+        ) or next(
+            (it for it in all_items if it.get("source") in _cc_sources),
+            None,
+        )
         if not cc_item:
             log.warning("No Claude Code item available to guarantee slot")
             return ranked
@@ -197,6 +204,16 @@ def main() -> None:
         log.error("Ranking returned no results — aborting")
         sys.exit(1)
 
+    # Deduplicate ranked list by URL (keep highest-ranked per URL)
+    seen_urls: set[str] = set()
+    deduped: list[dict] = []
+    for r in ranked:
+        u = normalize_url(r.get("url", ""))
+        if u not in seen_urls:
+            seen_urls.add(u)
+            deduped.append(r)
+    ranked = deduped
+
     # Guarantee at least one Claude Code story in the top 3
     ranked = _guarantee_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
 
@@ -209,7 +226,12 @@ def main() -> None:
             continue
 
         candidate["url"] = url
-        original = next((it for it in all_items if it["link"] == url), None)
+        # Match by title+URL first (multiple items can share the same changelog URL)
+        title = candidate.get("title", "")
+        original = (
+            next((it for it in all_items if it["link"] == url and it["title"] == title), None)
+            or next((it for it in all_items if it["link"] == url), None)
+        )
 
         og = fetch_og_meta(url)
         enrichment = write_site_entry(candidate, original, client)
