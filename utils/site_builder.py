@@ -6,7 +6,6 @@ log = logging.getLogger(__name__)
 
 
 def _format_date(iso: str) -> str:
-    """Return a human-readable date like 'May 7, 2026' from an ISO timestamp."""
     try:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
         return dt.strftime("%B %-d, %Y")
@@ -15,42 +14,58 @@ def _format_date(iso: str) -> str:
 
 
 def _render_story_card(story: dict) -> str:
-    rank = story.get("rank", "")
-    title = story.get("title", "")
-    url = story.get("url", "#")
-    source = story.get("source", "")
-    published = _format_date(story.get("published", ""))
-    summary = story.get("summary", "")
+    rank        = story.get("rank", "")
+    title       = story.get("title", "")
+    url         = story.get("url", "#")
+    source      = story.get("source", "")
+    published   = _format_date(story.get("published", ""))
+    summary     = story.get("summary", "")
     considerations = story.get("considerations", "")
-    score = story.get("score", "")
+    score       = story.get("score", "")
 
-    source_date = " · ".join(filter(None, [source, published]))
-
-    og_image_html = ""
+    image_html = ""
     if story.get("og_image"):
-        og_image_html = f'<img class="card-image" src="{story["og_image"]}" alt="" loading="lazy">\n        '
+        # onerror hides the element if the URL is broken at display time
+        image_html = (
+            f'<img class="card-image" src="{story["og_image"]}" alt="{source}"'
+            f' loading="lazy" onerror="this.style.display=\'none\'">\n    '
+        )
 
-    considerations_html = ""
+    take_html = ""
     if considerations:
-        considerations_html = f'<blockquote class="considerations">{considerations}</blockquote>\n        '
+        take_html = (
+            f'    <div class="claude-take">\n'
+            f'      <p class="claude-take-label">Claude\'s take</p>\n'
+            f'      <p class="claude-take-text">{considerations}</p>\n'
+            f'    </div>\n'
+        )
 
-    score_badge = f'<span class="score-badge">{score}/10</span>' if score else ""
+    score_chip = (
+        f'<span class="score-chip">&#9733;&nbsp;{score}/10</span>' if score else ""
+    )
 
-    return f"""\
-    <article class="story-card">
-        {og_image_html}<div class="card-meta">
-            <span class="rank">#{rank}</span>
-            {score_badge}
-        </div>
-        <h2><a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h2>
-        <p class="source-date">{source_date}</p>
-        <p class="summary">{summary}</p>
-        {considerations_html}<a class="read-more" href="{url}" target="_blank" rel="noopener noreferrer">Read full article →</a>
-    </article>"""
+    return (
+        f'    <article class="story-card">\n'
+        f'    {image_html}'
+        f'    <div class="card-body">\n'
+        f'      <div class="card-top">\n'
+        f'        <span class="rank-badge">#{rank}</span>\n'
+        f'        <span class="source-chip">{source}</span>\n'
+        f'        {score_chip}\n'
+        f'      </div>\n'
+        f'      <h2 class="story-title">'
+        f'<a href="{url}" target="_blank" rel="noopener noreferrer">{title}</a></h2>\n'
+        f'      <p class="story-date">{published}</p>\n'
+        f'      <p class="story-summary">{summary}</p>\n'
+        f'{take_html}'
+        f'      <a class="read-link" href="{url}" target="_blank" rel="noopener noreferrer">'
+        f'Read full article &#8594;</a>\n'
+        f'    </div>\n'
+        f'    </article>'
+    )
 
 
 def build_site(news_data: dict, template_path: str | Path, output_path: str | Path) -> None:
-    """Render site/index.html from template and news_data."""
     template = Path(template_path).read_text(encoding="utf-8")
 
     stories_html = "\n".join(_render_story_card(s) for s in news_data.get("stories", []))
