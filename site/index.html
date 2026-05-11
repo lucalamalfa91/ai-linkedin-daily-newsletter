@@ -3,17 +3,251 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Coding Tools Digest — Coming Soon</title>
+  <title>AI Coding Tools Digest — May 11, 2026</title>
+  <meta name="description" content="The 3 biggest AI coding tool updates, analyzed daily by Claude.">
+  <meta property="og:title" content="AI Coding Tools Digest — May 11, 2026">
+  <meta property="og:description" content="The 3 biggest AI coding tool updates, analyzed daily.">
+  <meta property="og:type" content="website">
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-           max-width: 600px; margin: 4rem auto; padding: 0 1rem; color: #1a1a1a; }
-    h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-    p { color: #555; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f9f7;
+      --surface: #ffffff;
+      --border: #e8e8e4;
+      --text: #1a1a1a;
+      --muted: #6b6b6b;
+      --accent: #1a56db;
+      --accent-bg: #eff6ff;
+      --accent-border: #3b82f6;
+      --badge-bg: #f0fdf4;
+      --badge-text: #166534;
+      --rank-bg: #f3f4f6;
+      --rank-text: #374151;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111111;
+        --surface: #1c1c1e;
+        --border: #2e2e30;
+        --text: #f0f0f0;
+        --muted: #9a9a9a;
+        --accent: #60a5fa;
+        --accent-bg: #1e2d4a;
+        --accent-border: #3b82f6;
+        --badge-bg: #14291f;
+        --badge-text: #6ee7b7;
+        --rank-bg: #2a2a2c;
+        --rank-text: #d1d5db;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 2.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1.5rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.3rem;
+    }
+
+    header .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    header .subtitle strong {
+      color: var(--text);
+    }
+
+    .story-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      transition: box-shadow 0.15s ease;
+    }
+
+    .story-card:hover {
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+
+    .card-image {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .card-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.6rem;
+    }
+
+    .rank {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--rank-bg);
+      color: var(--rank-text);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+      letter-spacing: 0.03em;
+    }
+
+    .score-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: var(--badge-bg);
+      color: var(--badge-text);
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+    }
+
+    .story-card h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1.35;
+      margin-bottom: 0.35rem;
+    }
+
+    .story-card h2 a {
+      color: var(--text);
+      text-decoration: none;
+    }
+
+    .story-card h2 a:hover {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    .source-date {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+
+    .summary {
+      font-size: 0.9rem;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 0.85rem;
+    }
+
+    .considerations {
+      font-size: 0.875rem;
+      background: var(--accent-bg);
+      border-left: 3px solid var(--accent-border);
+      padding: 0.75rem 1rem;
+      border-radius: 0 6px 6px 0;
+      margin-bottom: 1rem;
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    .considerations::before {
+      content: "Claude's take: ";
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .read-more {
+      font-size: 0.82rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .read-more:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 500px) {
+      header h1 { font-size: 1.25rem; }
+      .story-card { padding: 1.1rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>AI Coding Tools Digest</h1>
-  <p>The first digest will appear here after the pipeline runs for the first time.</p>
-  <p>Updated daily at 5 AM UTC with the 3 biggest AI coding tool updates, analyzed by Claude.</p>
+  <div class="container">
+    <header>
+      <h1>AI Coding Tools Digest</h1>
+      <p class="subtitle">
+        <strong>May 11, 2026</strong> &mdash;
+        3 stories selected and analyzed daily from Claude Code, Cursor, Copilot, Windsurf, and more
+      </p>
+    </header>
+    <main>
+    <article class="story-card">
+        <img class="card-image" src="https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png" alt="" loading="lazy">
+        <div class="card-meta">
+            <span class="rank">#1</span>
+            <span class="score-badge">10/10</span>
+        </div>
+        <h2><a href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Cursor 3.3 - PR Review, Parallel Builds, and Quick Actions</a></h2>
+        <p class="source-date">Cursor · May 7, 2026</p>
+        <p class="summary">New PR review experience with inline threads and commit history view, ability to execute plans in parallel using async subagents, and quick-action pills for splitting changes into PRs and pinning skills.</p>
+        <a class="read-more" href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Read full article →</a>
+    </article>
+    <article class="story-card">
+        <div class="card-meta">
+            <span class="rank">#2</span>
+            <span class="score-badge">9/10</span>
+        </div>
+        <h2><a href="https://platform.openai.com/docs/changelog" target="_blank" rel="noopener noreferrer">Realtime 2 with Reasoning and Translation Features</a></h2>
+        <p class="source-date">OpenAI Codex · May 7, 2026</p>
+        <p class="summary">Released Realtime 2, a new realtime voice model with configurable reasoning for speech-to-speech agents. Also launched Realtime Translate for streaming speech translation and Realtime Whisper for streaming speech-to-text.</p>
+        <a class="read-more" href="https://platform.openai.com/docs/changelog" target="_blank" rel="noopener noreferrer">Read full article →</a>
+    </article>
+    <article class="story-card">
+        <img class="card-image" src="https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png" alt="" loading="lazy">
+        <div class="card-meta">
+            <span class="rank">#3</span>
+            <span class="score-badge">8/10</span>
+        </div>
+        <h2><a href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Enterprise Model Controls and Spend Management Updates</a></h2>
+        <p class="source-date">Cursor · May 7, 2026</p>
+        <p class="summary">New PR review experience with inline threads and commit history view, ability to execute plans in parallel using async subagents, and quick-action pills for splitting changes into PRs and pinning skills.</p>
+        <a class="read-more" href="https://www.cursor.com/changelog" target="_blank" rel="noopener noreferrer">Read full article →</a>
+    </article>
+    </main>
+    <footer>
+      Updated daily at 5&nbsp;AM UTC &middot;
+      Stories selected and analyzed by Claude &middot;
+      Last updated: 2026-05-11 08:25 UTC
+    </footer>
+  </div>
 </body>
 </html>

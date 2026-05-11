@@ -1,5 +1,42 @@
 {
-  "generated_at": "2026-05-08T05:00:00+00:00",
-  "date": "2026-05-08",
-  "stories": []
+  "generated_at": "2026-05-11T08:25:15.592891+00:00",
+  "date": "2026-05-11",
+  "stories": [
+    {
+      "rank": 1,
+      "score": 10,
+      "title": "Cursor 3.3 - PR Review, Parallel Builds, and Quick Actions",
+      "url": "https://www.cursor.com/changelog",
+      "source": "Cursor",
+      "summary": "New PR review experience with inline threads and commit history view, ability to execute plans in parallel using async subagents, and quick-action pills for splitting changes into PRs and pinning skills.",
+      "considerations": "",
+      "published": "2026-05-07",
+      "og_image": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png",
+      "is_feature_spotlight": false
+    },
+    {
+      "rank": 2,
+      "score": 9,
+      "title": "Realtime 2 with Reasoning and Translation Features",
+      "url": "https://platform.openai.com/docs/changelog",
+      "source": "OpenAI Codex",
+      "summary": "Released Realtime 2, a new realtime voice model with configurable reasoning for speech-to-speech agents. Also launched Realtime Translate for streaming speech translation and Realtime Whisper for streaming speech-to-text.",
+      "considerations": "",
+      "published": "2026-05-07",
+      "og_image": null,
+      "is_feature_spotlight": false
+    },
+    {
+      "rank": 3,
+      "score": 8,
+      "title": "Enterprise Model Controls and Spend Management Updates",
+      "url": "https://www.cursor.com/changelog",
+      "source": "Cursor",
+      "summary": "New PR review experience with inline threads and commit history view, ability to execute plans in parallel using async subagents, and quick-action pills for splitting changes into PRs and pinning skills.",
+      "considerations": "",
+      "published": "2026-05-07",
+      "og_image": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/changelog-og.png",
+      "is_feature_spotlight": false
+    }
+  ]
 }
