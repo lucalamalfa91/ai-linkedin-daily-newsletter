@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-05-09T07:07:51.555888+00:00",
-  "date": "2026-05-09",
+  "generated_at": "2026-05-11T08:25:15.592891+00:00",
+  "date": "2026-05-11",
   "stories": [
     {
       "rank": 1,
@@ -28,7 +28,7 @@
     },
     {
       "rank": 3,
-      "score": 9,
+      "score": 8,
       "title": "Enterprise Model Controls and Spend Management Updates",
       "url": "https://www.cursor.com/changelog",
       "source": "Cursor",
