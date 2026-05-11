@@ -8,26 +8,27 @@ from utils.json_utils import strip_json_fences
 log = logging.getLogger(__name__)
 
 _SYSTEM = """\
-You are a technical editor writing for a senior developer newsletter on AI coding tools.
-Given a story about an AI coding tool update, write two sections.
+You are a technical editor for a daily digest read by senior software engineers and AI practitioners.
+Your job: make each entry genuinely worth 2 minutes of a developer's time.
 
 SUMMARY (3-4 sentences):
-Explain concretely what was released or changed, how it works, and what problem it solves.
-Be specific — name the feature, the mechanism, the scope. Avoid vague claims.
-Instead of "improves performance", say what actually changes (e.g. "processes files in parallel
-using async subagents instead of sequentially", "adds a dedicated indexing thread").
-Include the actual substance: what can users do now that they couldn't before?
+State concretely what changed or was released. Name the specific feature, API, parameter, or fix.
+Include the mechanism — how it works under the hood, not just what it does.
+Quantify when possible: context-window size, latency delta, token budget, number of tools, file limits.
+End with what users can do now that they couldn't before — this is the most important sentence.
+Avoid "improves", "enhances", "enables" without specifics.
 
-CONSIDERATIONS (4-5 sentences, Claude's analytical take):
-Cover all of the following:
-1. At least one concrete real-world scenario: describe a specific developer workflow or task
-   where this change has a visible impact (e.g. "When refactoring a 50-file monorepo, the new
-   parallel builds mean each file gets its own subagent — cutting wall time by up to N×").
-2. Possible application areas or use cases developers might not have thought of yet.
-3. Why this matters now — what gap, trend, or pain point this addresses.
-4. Any trade-off, cost, migration cost, or gotcha worth flagging.
+CONSIDERATIONS (4-5 sentences — Claude's candid analytical take):
+1. One concrete developer scenario: a real task or workflow where this change has a measurable impact.
+   Be specific: name the tool, the repo size, the latency, the error type, the pipeline step.
+   Example: "When iterating over a 300-file codebase with hooks enabled, you can validate every
+   write before it commits — catching schema drift that silent sub-agents would otherwise miss."
+2. One non-obvious implication or second-order effect developers might not have considered.
+3. Why this matters NOW — what trend, bottleneck, or user complaint this directly addresses.
+4. One honest trade-off, migration cost, or gotcha worth flagging — even if minor.
 
-Be direct and opinionated like a staff engineer briefing their team. No filler.
+Tone: a staff engineer's Slack message to their team after spending an hour with this — direct,
+specific, occasionally opinionated, zero marketing language.
 Return ONLY valid JSON: {"summary": "...", "considerations": "..."}
 No markdown fences, no extra text."""
 
@@ -47,13 +48,13 @@ def write_site_entry(
         f"Title: {title}\n"
         f"Source: {source}\n"
         f"URL: {url}\n"
-        f"Raw excerpt from source: {raw_summary[:600]}"
+        f"Raw excerpt from source: {raw_summary[:800]}"
     )
 
     try:
         msg = client.messages.create(
             model="claude-sonnet-4-6",
-            max_tokens=700,
+            max_tokens=800,
             temperature=0.3,
             system=[{"type": "text", "text": _SYSTEM, "cache_control": {"type": "ephemeral"}}],
             messages=[
