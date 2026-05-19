@@ -2,11 +2,10 @@
 """Daily AI Coding Tools digest pipeline.
 
 Flow:
-  1. Scrape changelog pages (8 sources) → Claude Haiku extracts items
-  2. Scrape Claude Code feature docs → Claude Sonnet generates spotlight articles
-  3. Rank all items → top 3 (Claude Code gets priority boost)
-  4. Write summary + considerations for each → news.json + index.html
-  5. Commit + push → Vercel auto-deploys
+  1. Scrape changelog / news pages (10 sources) → Claude Haiku extracts items
+  2. Rank all items → top N (Claude Code gets guaranteed slot)
+  3. Write summary + considerations for each → news.json + index.html
+  4. Commit + push → Vercel auto-deploys
 """
 
 import json
@@ -21,13 +20,11 @@ from pathlib import Path
 import anthropic
 
 from agents.changelog_agent import extract_changelog_items
-from agents.feature_spotlight_agent import generate_feature_spotlight
 from agents.ranking_agent import rank_stories
 from agents.site_writer_agent import write_site_entry
 from config import (
     CHANGELOG_SOURCE_HOMEPAGES,
     CHANGELOG_SOURCES,
-    CLAUDE_CODE_FEATURE_PAGES,
     CODING_FOCUS_TOPICS,
     NEWS_JSON_PATH,
     RANKED_SITE_TOP_N,
@@ -70,31 +67,18 @@ def _require_env(*keys: str) -> None:
 
 
 def _scrape_changelogs(client: anthropic.Anthropic) -> list[dict]:
-    """Scrape all changelog sources and return extracted items."""
+    """Scrape all changelog/news sources and return extracted items."""
     items = []
     for source_name, url in CHANGELOG_SOURCES.items():
-        log.info("Scraping changelog: %s", source_name)
+        log.info("Scraping: %s", source_name)
         text = fetch_page_text(url)
         if not text:
             log.warning("Empty page for %s — skipping", source_name)
             continue
         extracted = extract_changelog_items(text, source_name, url, client)
         items.extend(extracted)
-    log.info("Changelog scraping: %d total items from %d sources", len(items), len(CHANGELOG_SOURCES))
+    log.info("Scraping complete: %d items from %d sources", len(items), len(CHANGELOG_SOURCES))
     return items
-
-
-def _generate_spotlights(client: anthropic.Anthropic) -> list[dict]:
-    """Scrape Claude Code feature docs and generate self-made spotlight articles."""
-    spotlights = []
-    for feature_name, url in CLAUDE_CODE_FEATURE_PAGES:
-        log.info("Generating feature spotlight: %s", feature_name)
-        text = fetch_page_text(url)
-        article = generate_feature_spotlight(feature_name, url, text, client)
-        if article:
-            spotlights.append(article)
-    log.info("Feature spotlights: %d articles generated", len(spotlights))
-    return spotlights
 
 
 def _write_news_json(data: dict) -> None:
@@ -120,21 +104,16 @@ def _enforce_claude_code_slot(
     - If 2+ CC items: keep only the highest-ranked one, fill remaining slots
       with the next best non-CC items from the ranked pool.
     """
-    _cc_sources = {"Claude Code Docs", "Claude Code"}
-    cc_links = {it["link"] for it in all_items if it.get("source") in _cc_sources}
+    _cc_source = "Claude Code"
+    cc_links = {it["link"] for it in all_items if it.get("source") == _cc_source}
 
     cc_in_pool = [r for r in ranked if r["url"] in cc_links]
     other_in_pool = [r for r in ranked if r["url"] not in cc_links]
 
-    # Pick best CC candidate
     if cc_in_pool:
         best_cc = cc_in_pool[0]
     else:
-        cc_item = next(
-            (it for it in all_items if it.get("_is_feature_spotlight")), None
-        ) or next(
-            (it for it in all_items if it.get("source") in _cc_sources), None
-        )
+        cc_item = next((it for it in all_items if it.get("source") == _cc_source), None)
         if not cc_item:
             log.warning("No Claude Code item available — omitting guaranteed slot")
             result = other_in_pool[:top_n]
@@ -144,7 +123,6 @@ def _enforce_claude_code_slot(
         best_cc = {"rank": top_n, "score": 5, "title": cc_item["title"], "url": cc_item["link"]}
         log.info("Injected Claude Code item: '%s'", best_cc["title"])
 
-    # Fill top_n-1 slots with best non-CC items, then append 1 CC item
     result = other_in_pool[: top_n - 1] + [best_cc]
     for i, r in enumerate(result, 1):
         r["rank"] = i
@@ -184,22 +162,14 @@ def main() -> None:
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    # 1. Scrape changelogs from all 8 sources
-    changelog_items = _scrape_changelogs(client)
-
-    # 2. Generate Claude Code feature spotlight articles
-    spotlight_items = _generate_spotlights(client)
-
-    # Merge: spotlights first so the ranker sees them prominently.
-    # The ranking_agent prompt gives +3 to focus topics which includes Claude Code.
-    all_items = spotlight_items + changelog_items
+    # 1. Scrape all changelog/news sources
+    all_items = _scrape_changelogs(client)
 
     if not all_items:
         log.error("No items collected from any source — aborting")
         sys.exit(1)
 
-    log.info("Total items to rank: %d (%d spotlights + %d changelog)",
-             len(all_items), len(spotlight_items), len(changelog_items))
+    log.info("Total items to rank: %d", len(all_items))
 
     # 3. Rank all items — the agent now returns ALL items sorted by score
     ranked = rank_stories(
@@ -281,7 +251,6 @@ def main() -> None:
             "considerations": enrichment["considerations"],
             "published": original.get("published", "") if original else "",
             "og_image": og.get("image") or None,
-            "is_feature_spotlight": bool(original and original.get("_is_feature_spotlight")),
         })
 
     if not stories:
@@ -303,11 +272,7 @@ def main() -> None:
     # 7. Commit and push (GitHub Actions only)
     _commit_and_push()
 
-    spotlights_in_top3 = sum(1 for s in stories if s.get("is_feature_spotlight"))
-    log.info(
-        "Site pipeline complete — %d stories (%d feature spotlights, %d changelogs)",
-        len(stories), spotlights_in_top3, len(stories) - spotlights_in_top3,
-    )
+    log.info("Site pipeline complete — %d stories published", len(stories))
 
 
 if __name__ == "__main__":

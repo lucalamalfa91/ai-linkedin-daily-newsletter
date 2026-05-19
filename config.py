@@ -127,24 +127,25 @@ SITE_OUTPUT_PATH = _ROOT / "site" / "index.html"
 # Fallback og:image per source — used when the article/changelog URL returns no image.
 # These are the source's homepage or brand page, which reliably return a good og:image.
 CHANGELOG_SOURCE_HOMEPAGES = {
-    "Claude Code":        "https://www.anthropic.com",
-    "Claude Code Docs":   "https://www.anthropic.com",
-    "Claude API":         "https://www.anthropic.com",
-    "Cursor":             "https://www.cursor.com",
-    "OpenAI Codex":       "https://openai.com",
-    "GitHub Copilot":     "https://github.com/features/copilot",
-    "Windsurf":           "https://codeium.com",
-    "Aider":              "https://aider.chat",
-    "Continue.dev":       "https://www.continue.dev",
-    "Amazon Q":           "https://aws.amazon.com/q/developer/",
+    "Claude Code":      "https://www.anthropic.com",
+    "Claude API":       "https://www.anthropic.com",
+    "Anthropic News":   "https://www.anthropic.com",
+    "Cursor":           "https://www.cursor.com",
+    "OpenAI Codex":     "https://openai.com",
+    "GitHub Copilot":   "https://github.com/features/copilot",
+    "Windsurf":         "https://codeium.com",
+    "Aider":            "https://aider.chat",
+    "Continue.dev":     "https://www.continue.dev",
+    "Amazon Q":         "https://aws.amazon.com/q/developer/",
 }
 
 # Changelog/release-notes pages scraped directly (no RSS).
-# Each URL should point to a "what's new" or release-notes page — not a generic blog
-# or marketing page — so the extractor finds dated, concrete changes.
+# Each URL must point to a real release-notes or news page so the extractor
+# finds dated, concrete changes — no generic marketing or docs pages.
 CHANGELOG_SOURCES = {
     "Claude Code":      "https://docs.anthropic.com/en/release-notes/claude-code",
     "Claude API":       "https://docs.anthropic.com/en/whats-new",
+    "Anthropic News":   "https://www.anthropic.com/news",
     "Cursor":           "https://www.cursor.com/changelog",
     "OpenAI Codex":     "https://platform.openai.com/docs/changelog",
     "GitHub Copilot":   "https://docs.github.com/en/copilot/about-github-copilot/github-copilot-release-notes",
@@ -153,19 +154,6 @@ CHANGELOG_SOURCES = {
     "Continue.dev":     "https://github.com/continuedev/continue/releases",
     "Amazon Q":         "https://aws.amazon.com/q/developer/",
 }
-
-# Claude Code docs pages used to generate self-made feature spotlight articles.
-# Each entry: (feature_name, url). Claude Sonnet reads the page and writes the article.
-CLAUDE_CODE_FEATURE_PAGES = [
-    ("Claude Code Hooks",          "https://docs.anthropic.com/en/docs/claude-code/hooks"),
-    ("Claude Code MCP",            "https://docs.anthropic.com/en/docs/claude-code/mcp"),
-    ("Claude Code Sub-agents",     "https://docs.anthropic.com/en/docs/claude-code/sub-agents"),
-    ("Claude Code Memory",         "https://docs.anthropic.com/en/docs/claude-code/memory"),
-    ("Claude Code GitHub Actions", "https://docs.anthropic.com/en/docs/claude-code/github-actions"),
-    ("Claude Code Slash Commands", "https://docs.anthropic.com/en/docs/claude-code/slash-commands"),
-    ("Claude Code Settings",       "https://docs.anthropic.com/en/docs/claude-code/settings"),
-    ("Claude Code Tutorials",      "https://docs.anthropic.com/en/docs/claude-code/tutorials"),
-]
 
 CODING_FOCUS_TOPICS = (
     "Claude Code, Cursor IDE, GitHub Copilot, OpenAI Codex, Windsurf, Codeium, "
