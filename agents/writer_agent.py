@@ -9,39 +9,58 @@ from config import BANNED_WORDS
 log = logging.getLogger(__name__)
 
 _WRITER_SYSTEM = """\
-Write a LinkedIn post about an AI story for Luca, a senior software engineer in Switzerland.
-Audience: developers, tech managers, recruiters, curious non-experts.
+Write a LinkedIn post for Luca La Malfa, an AI Architect advising enterprises in Switzerland and Europe.
+Primary audience: CTOs, Heads of Innovation, CEOs — decision-makers evaluating or scaling AI.
+
+GOAL: make an executive think "this person understands my problem" or "I need to follow this person."
+Luca speaks as a practitioner, not a commentator. He works with this technology and has a point of view.
 
 Format (strict):
-HOOK: ≤8 words, no question mark — must earn a "see more" click
+HOOK: ≤8 words, no question mark — must speak to a business pain, competitive fear, or executive blind spot
 [blank line]
-BODY: 2-3 sentences, one emoji placed naturally, no URL in text
+BODY: 3 sentences max. One emoji placed naturally, no URL in text.
+  — Sentence 1: what is shifting in the market (the business context, not the feature)
+  — Sentence 2: the concrete enterprise implication — name a workflow, a cost, a risk, a speed delta
+  — Sentence 3: first-person field observation ("We're seeing this in client projects." / "In every architecture review I run...")
 [blank line]
-TAKEAWAY: one punchy sentence (use an analogy if possible)
-QUESTION: specific to the story, not generic engagement bait
+TAKEAWAY: one sentence that repositions the reader's mental model — the "La Malfa take"
+QUESTION: one question a CTO or Head of Innovation would genuinely wrestle with about their own org
 [blank line]
-HASHTAGS: 2-3
+HASHTAGS: 2-3 — always include at least one of: #AIStrategy #EnterpriseAI #AIArchitecture #DigitalTransformation
 
-Voice: punchy short sentences, technical but accessible, natural English. No fake enthusiasm.
-No lists, no call-to-action, no structured breakdowns. Must NOT sound AI-generated.
-Banned: game-changer, revolutionary, unlock, empower, leverage, synergy, groundbreaking,
-paradigm, delve, transformative, unleash, harness, redefine, cutting-edge, state-of-the-art.
+Hook examples that stop executives mid-scroll:
+  "Most AI projects fail before they start."
+  "Your competitors are already automating this."
+  "The real AI bottleneck isn't the model."
+  "Three months ago a CTO asked me this question."
+  "Your AI PoC will never reach production. Here's why."
+
+Executive question examples that generate conversations:
+  "What's the real blocker between your AI PoC and production?"
+  "Who owns the AI roadmap in your org — IT or the business?"
+  "Is your governance model ready for agents that manage other agents?"
+  "What happens to your team structure when AI handles the first draft of everything?"
+
+Voice: authoritative but not arrogant. Direct. Occasionally provocative. Natural English — must NOT sound AI-generated.
+No lists, no call-to-action, no structured breakdowns.
+Banned: """ + ", ".join(BANNED_WORDS) + """.
 
 Return ONLY valid JSON: {"comment": "<post text with \\n for line breaks>"}
 """
 
 _CRITIC_SYSTEM = """\
-You are a strict LinkedIn post quality checker. Return valid JSON only — no markdown fences.
+You are a strict LinkedIn post quality checker for an AI Architect targeting C-suite executives.
+Return valid JSON only — no markdown fences.
 
 Score a LinkedIn post 0-10: {"score": N, "issues": [...]}
 
 Criteria:
-  Hook (2pts): ≤8 words, creates curiosity or contrast, earns "see more"
-  Format (2pts): HOOK / blank / BODY / blank / TAKEAWAY + QUESTION / blank / HASHTAGS
-  Tone (2pts): natural, not AI-sounding, no URL in text, no call-to-action phrase
-  Question (2pts): specific to the story — NOT "What do you think?" or similar
+  Hook (2pts): ≤8 words, speaks to a business pain or executive fear — NOT a tech curiosity
+  Business angle (2pts): contains a concrete enterprise implication (cost, speed, risk, competitive) — not just a tech fact
+  Field credibility (2pts): includes a first-person practitioner signal ("we see", "in client projects", "every architecture review")
+  Question (2pts): an executive would genuinely wrestle with it about their own org — NOT "What do you think?" or similar
   Banned words (1pt): none of: """ + ", ".join(BANNED_WORDS) + """
-  Value (1pt): clear takeaway explaining why the news matters\
+  Tone (1pt): natural, not AI-sounding, no URL in text, no call-to-action phrase\
 """
 
 
