@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Daily AI Coding Tools digest pipeline.
+"""Daily AI newsletter digest pipeline.
 
 Flow:
-  1. Scrape changelog pages (8 sources) → Claude Haiku extracts items
-  2. Scrape Claude Code feature docs → Claude Sonnet generates spotlight articles
-  3. Rank all items → top 5 (1 slot always Claude Code)
-  4. Write summary + considerations for each → news.json + index.html
+  1. Fetch RSS feeds (opinionated AI writers + labs)
+  2. Rank all items with Claude Haiku
+  3. Enrich top 5 with summary + considerations (La Malfa format)
+  4. Write news.json + index.html
   5. Commit + push → Vercel auto-deploys
 """
 
@@ -20,22 +20,17 @@ from pathlib import Path
 
 import anthropic
 
-from agents.changelog_agent import extract_changelog_items
-from agents.feature_spotlight_agent import generate_feature_spotlight
+from agents.feed_agent import fetch_feeds
 from agents.ranking_agent import rank_stories
 from agents.site_writer_agent import write_site_entry
 from config import (
-    CHANGELOG_SOURCE_HOMEPAGES,
-    CHANGELOG_SOURCES,
-    CLAUDE_CODE_FEATURE_PAGES,
-    CODING_FOCUS_TOPICS,
+    FOCUS_TOPICS,
     NEWS_JSON_PATH,
     RANKED_SITE_TOP_N,
     SITE_OUTPUT_PATH,
     TEMPLATE_PATH,
 )
 from utils.og_meta import fetch_og_meta
-from utils.page_scraper import fetch_page_text
 from utils.site_builder import build_site
 from utils.url_utils import is_valid_url, normalize_url
 
@@ -69,34 +64,6 @@ def _require_env(*keys: str) -> None:
         sys.exit(1)
 
 
-def _scrape_changelogs(client: anthropic.Anthropic) -> list[dict]:
-    """Scrape all changelog sources and return extracted items."""
-    items = []
-    for source_name, url in CHANGELOG_SOURCES.items():
-        log.info("Scraping changelog: %s", source_name)
-        text = fetch_page_text(url)
-        if not text:
-            log.warning("Empty page for %s — skipping", source_name)
-            continue
-        extracted = extract_changelog_items(text, source_name, url, client)
-        items.extend(extracted)
-    log.info("Changelog scraping: %d total items from %d sources", len(items), len(CHANGELOG_SOURCES))
-    return items
-
-
-def _generate_spotlights(client: anthropic.Anthropic) -> list[dict]:
-    """Scrape Claude Code feature docs and generate self-made spotlight articles."""
-    spotlights = []
-    for feature_name, url in CLAUDE_CODE_FEATURE_PAGES:
-        log.info("Generating feature spotlight: %s", feature_name)
-        text = fetch_page_text(url)
-        article = generate_feature_spotlight(feature_name, url, text, client)
-        if article:
-            spotlights.append(article)
-    log.info("Feature spotlights: %d articles generated", len(spotlights))
-    return spotlights
-
-
 def _write_news_json(data: dict) -> None:
     path = Path(NEWS_JSON_PATH)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -107,50 +74,6 @@ def _write_news_json(data: dict) -> None:
         tmp_path = tf.name
     Path(tmp_path).replace(path)
     log.info("Wrote %s", path)
-
-
-def _enforce_claude_code_slot(
-    ranked: list[dict],
-    all_items: list[dict],
-    top_n: int,
-) -> list[dict]:
-    """Enforce exactly 1 Claude Code item in the top_n results.
-
-    - If 0 CC items: inject the best available one at the last slot.
-    - If 2+ CC items: keep only the highest-ranked one, fill remaining slots
-      with the next best non-CC items from the ranked pool.
-    """
-    _cc_sources = {"Claude Code Docs", "Claude Code"}
-    cc_links = {it["link"] for it in all_items if it.get("source") in _cc_sources}
-
-    cc_in_pool = [r for r in ranked if r["url"] in cc_links]
-    other_in_pool = [r for r in ranked if r["url"] not in cc_links]
-
-    if cc_in_pool:
-        best_cc = cc_in_pool[0]
-    else:
-        cc_item = next(
-            (it for it in all_items if it.get("_is_feature_spotlight")), None
-        ) or next(
-            (it for it in all_items if it.get("source") in _cc_sources), None
-        )
-        if not cc_item:
-            log.warning("No Claude Code item available — omitting guaranteed slot")
-            result = other_in_pool[:top_n]
-            for i, r in enumerate(result, 1):
-                r["rank"] = i
-            return result
-        best_cc = {"rank": top_n, "score": 5, "title": cc_item["title"], "url": cc_item["link"]}
-        log.info("Injected Claude Code item: '%s'", best_cc["title"])
-
-    result = other_in_pool[: top_n - 1] + [best_cc]
-    for i, r in enumerate(result, 1):
-        r["rank"] = i
-
-    if len(cc_in_pool) > 1:
-        log.info("Capped Claude Code from %d to 1 item in top %d", len(cc_in_pool), top_n)
-
-    return result
 
 
 def _commit_and_push() -> None:
@@ -182,28 +105,15 @@ def main() -> None:
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    # 1. Scrape changelogs from all 8 sources
-    changelog_items = _scrape_changelogs(client)
-
-    # 2. Generate Claude Code feature spotlight articles
-    spotlight_items = _generate_spotlights(client)
-
-    all_items = spotlight_items + changelog_items
-
+    # 1. Fetch RSS feeds — last 7 days from all configured sources
+    all_items = fetch_feeds(days=7)
     if not all_items:
-        log.error("No items collected from any source — aborting")
+        log.error("No items from RSS feeds — aborting")
         sys.exit(1)
+    log.info("RSS feeds: %d items collected", len(all_items))
 
-    log.info("Total items to rank: %d (%d spotlights + %d changelog)",
-             len(all_items), len(spotlight_items), len(changelog_items))
-
-    # 3. Rank: ask for ALL items so Haiku never drops any by implicit quality threshold
-    ranked = rank_stories(
-        all_items,
-        client,
-        focus_topics=CODING_FOCUS_TOPICS,
-        top_n=len(all_items),
-    )
+    # 2. Rank all items with Claude Haiku
+    ranked = rank_stories(all_items, client, focus_topics=FOCUS_TOPICS, top_n=len(all_items))
     if not ranked:
         log.error("Ranking returned no results — aborting")
         sys.exit(1)
@@ -216,31 +126,11 @@ def main() -> None:
         if u not in seen_urls:
             seen_urls.add(u)
             deduped.append(r)
+    for i, r in enumerate(deduped, 1):
+        r["rank"] = i
     ranked = deduped
 
-    # Enforce exactly 1 Claude Code slot in the final top N
-    ranked = _enforce_claude_code_slot(ranked, all_items, RANKED_SITE_TOP_N)
-
-    # Pad with remaining all_items if fewer than top_n unique items came back
-    if len(ranked) < RANKED_SITE_TOP_N:
-        used_urls = {normalize_url(r["url"]) for r in ranked}
-        for item in all_items:
-            if len(ranked) >= RANKED_SITE_TOP_N:
-                break
-            u = normalize_url(item.get("link", ""))
-            if u and u not in used_urls and is_valid_url(u):
-                ranked.append({
-                    "rank": len(ranked) + 1,
-                    "score": 5,
-                    "title": item["title"],
-                    "url": u,
-                })
-                used_urls.add(u)
-        for i, r in enumerate(ranked, 1):
-            r["rank"] = i
-        log.info("Padded ranked list to %d items from all_items pool", len(ranked))
-
-    # 4. Enrich top 5 with full summary + considerations
+    # 3. Enrich top N with summary + considerations (La Malfa format)
     stories = []
     for candidate in ranked[:RANKED_SITE_TOP_N]:
         url = normalize_url(candidate.get("url", ""))
@@ -257,13 +147,6 @@ def main() -> None:
 
         source_name = original.get("source", "") if original else ""
         og = fetch_og_meta(url)
-        if not og.get("image") and source_name:
-            fallback_url = CHANGELOG_SOURCE_HOMEPAGES.get(source_name)
-            if fallback_url:
-                og = fetch_og_meta(fallback_url)
-                if og.get("image"):
-                    log.info("Used homepage fallback image for '%s'", source_name)
-
         enrichment = write_site_entry(candidate, original, client)
 
         stories.append({
@@ -276,14 +159,14 @@ def main() -> None:
             "considerations": enrichment["considerations"],
             "published": original.get("published", "") if original else "",
             "og_image": og.get("image") or None,
-            "is_feature_spotlight": bool(original and original.get("_is_feature_spotlight")),
+            "is_feature_spotlight": False,
         })
 
     if not stories:
         log.error("No valid stories after enrichment — aborting")
         sys.exit(1)
 
-    # 5. Write news.json
+    # 4. Write news.json
     now = datetime.now(timezone.utc)
     news_data = {
         "generated_at": now.isoformat(),
@@ -292,17 +175,13 @@ def main() -> None:
     }
     _write_news_json(news_data)
 
-    # 6. Build HTML
+    # 5. Build HTML
     build_site(news_data, TEMPLATE_PATH, SITE_OUTPUT_PATH)
 
-    # 7. Commit and push (GitHub Actions only)
+    # 6. Commit and push (GitHub Actions only)
     _commit_and_push()
 
-    spotlights_in_top = sum(1 for s in stories if s.get("is_feature_spotlight"))
-    log.info(
-        "Site pipeline complete — %d stories (%d feature spotlights, %d changelogs)",
-        len(stories), spotlights_in_top, len(stories) - spotlights_in_top,
-    )
+    log.info("Site pipeline complete — %d stories from RSS feeds", len(stories))
 
 
 if __name__ == "__main__":
