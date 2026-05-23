@@ -11,6 +11,10 @@ on:
         description: 'Custom focus topic (leave empty for default pipeline)'
         required: false
         default: ''
+      claude_code_only:
+        description: 'Only publish Claude Code / Anthropic news (true/false)'
+        required: false
+        default: 'false'
 
 jobs:
   post:
@@ -42,7 +46,12 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TOPIC: ${{ github.event.inputs.topic }}
-        run: python main.py
+        run: |
+          EXTRA_FLAGS=""
+          if [ "${{ github.event.inputs.claude_code_only }}" = "true" ]; then
+            EXTRA_FLAGS="--claude-code-only"
+          fi
+          python main.py $EXTRA_FLAGS
 
       - name: Notify on failure
         if: failure()
