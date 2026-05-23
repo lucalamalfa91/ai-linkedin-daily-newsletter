@@ -2,29 +2,34 @@ import os
 from pathlib import Path
 
 RSS_FEEDS = {
-    # --- Simone Rizzo ---
-    "AI News (Simone Rizzo)": "https://ainews.it/feed/",
+    # --- Deep technical / AI architecture ---
+    # (Simone Rizzo pubblica solo su YouTube/TikTok/LinkedIn — no RSS disponibile)
+    "Andrej Karpathy":        "https://karpathy.bearblog.dev/feed/",
+    "Lilian Weng":            "https://lilianweng.github.io/index.xml",
+    "Sebastian Raschka":      "https://magazine.sebastianraschka.com/feed",
+    "Vicki Boykis":           "https://vickiboykis.com/index.xml",
+    "Minimaxir (Max Woolf)":  "https://minimaxir.com/index.xml",
 
-    # --- Opinionated / analytical voices ---
+    # --- AI engineering & systems ---
+    "Chip Huyen":    "https://huyenchip.com/feed.xml",
+    "Eugene Yan":    "https://eugeneyan.com/feed.xml",
+    "Hamel Husain":  "https://hamel.dev/feed.xml",
+    "Jay Alammar":   "https://newsletter.languagemodels.co/feed",
+    "Simon Willison": "https://simonwillison.net/atom/everything/",
+
+    # --- Research & analysis ---
+    "Interconnects":            "https://www.interconnects.ai/feed",
+    "Latent Space":             "https://www.latent.space/feed",
+    "The Gradient":             "https://thegradient.pub/rss/",
+    "The Batch (deeplearning.ai)": "https://www.deeplearning.ai/the-batch/feed/",
+
+    # --- Critical / opinionated voices ---
     "Ethan Mollick (One Useful Thing)": "https://www.oneusefulthing.org/feed",
     "Gary Marcus":                       "https://garymarcus.substack.com/feed",
     "AI Snake Oil":                      "https://aisnakeoil.substack.com/feed",
     "The Algorithmic Bridge":            "https://thealgorithmicbridge.substack.com/feed",
     "Matt Turck":                        "https://mattturck.com/feed/",
     "Benedict Evans":                    "https://www.ben-evans.com/benedictevans/rss.xml",
-    "Simon Willison":                    "https://simonwillison.net/atom/everything/",
-    "Interconnects":                     "https://www.interconnects.ai/feed",
-    "Latent Space":                      "https://www.latent.space/feed",
-    "The Gradient":                      "https://thegradient.pub/rss/",
-    "The Batch (deeplearning.ai)":       "https://www.deeplearning.ai/the-batch/feed/",
-
-    # --- Practitioner researchers ---
-    "Sebastian Raschka": "https://magazine.sebastianraschka.com/feed",
-    "Chip Huyen":        "https://huyenchip.com/feed.xml",
-    "Eugene Yan":        "https://eugeneyan.com/feed.xml",
-    "Lilian Weng":       "https://lilianweng.github.io/index.xml",
-    "Hamel Husain":      "https://hamel.dev/feed.xml",
-    "Jay Alammar":       "https://newsletter.languagemodels.co/feed",
 }
 
 FOCUS_TOPICS = (
