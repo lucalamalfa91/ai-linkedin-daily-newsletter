@@ -9,6 +9,9 @@ RSS_FEEDS = {
     "Google AI Blog":     "https://blog.google/technology/ai/rss/",
     "Microsoft Research": "https://www.microsoft.com/en-us/research/feed/",
 
+    # --- Simone Rizzo ---
+    "AI News (Simone Rizzo)": "https://ainews.it/feed/",
+
     # --- Opinionated / analytical voices (Simone Rizzo editorial DNA) ---
     "Ethan Mollick (One Useful Thing)": "https://www.oneusefulthing.org/feed",
     "Gary Marcus":                       "https://garymarcus.substack.com/feed",
