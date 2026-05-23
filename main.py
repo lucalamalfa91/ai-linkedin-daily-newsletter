@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
 """LinkedIn AI News Post — multi-agent pipeline.
 
-Flow: analytics update → fetch RSS feeds → (optional) filter by topic
-      → rank stories → pick best → write post → publish LinkedIn → notify Telegram.
+Flow: analytics update → load newsletter (news.json) → filter out spotlights
+      → pick best story → write post → publish LinkedIn → notify Telegram.
 
-The TOPIC env var (or --topic flag) can be used to restrict which stories are
-considered.  Pass "claude code" (or any substring, case-insensitive) to publish
-only Claude Code / Anthropic news from the RSS feeds.  Leave empty for the full
-newsletter pool.
-
-NOTE: This pipeline is independent from site_pipeline.py.  site_pipeline.py writes
-news.json / index.html for the website.  This script publishes to LinkedIn from
-the live RSS feeds — so every post is based on a real, dated article.
+Source of truth: site/news.json generated daily by site_pipeline.py.
+Only real changelog/news items are considered (is_feature_spotlight=False).
 """
 
 import argparse
@@ -20,16 +14,15 @@ import logging
 import os
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 import anthropic
 
 from agents.analytics_agent import compute_performance_bonuses, update_analytics
-from agents.feed_agent import fetch_feeds
 from agents.notifier_agent import request_approval, send as notify
 from agents.publisher_agent import publish
-from agents.ranking_agent import rank_stories
 from agents.writer_agent import critique_post, truncate_comment, write_post
-from config import FOCUS_TOPICS, MIN_SCORE, RSS_FEEDS
+from config import FOCUS_TOPICS, MIN_SCORE, NEWS_JSON_PATH
 from utils.history import commit_history_to_git, extract_hashtags, extract_topics, load_history, save_history
 from utils.og_meta import fetch_og_meta
 from utils.url_utils import is_valid_url, normalize_url
@@ -41,14 +34,10 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# Sources considered "Claude Code" news — from RSS_FEEDS keys
-_CLAUDE_CODE_SOURCES = {"Anthropic", "OpenAI", "Google DeepMind", "Google AI Blog"}
-_CLAUDE_CODE_KEYWORDS = {"claude", "anthropic", "claude code"}
-
 
 def _load_env() -> None:
-    env_file = os.path.join(os.path.dirname(__file__), ".env")
-    if not os.path.exists(env_file):
+    env_file = Path(__file__).parent / ".env"
+    if not env_file.exists():
         return
     log.info("Loading .env file")
     with open(env_file) as f:
@@ -68,35 +57,56 @@ def _require_env(*keys: str) -> None:
         sys.exit(1)
 
 
-def _filter_claude_code(items: list[dict]) -> list[dict]:
-    """Keep only items from Anthropic sources or mentioning Claude / Anthropic in title/summary."""
-    filtered = []
-    for item in items:
-        source = item.get("source", "")
-        text = (item.get("title", "") + " " + item.get("summary", "")).lower()
-        if source in _CLAUDE_CODE_SOURCES or any(kw in text for kw in _CLAUDE_CODE_KEYWORDS):
-            filtered.append(item)
-    log.info("Claude Code filter: %d → %d items", len(items), len(filtered))
-    return filtered
+def _load_newsletter_stories(published_urls: set[str]) -> list[dict]:
+    """Load stories from news.json, filter out spotlights and already-published URLs."""
+    path = Path(NEWS_JSON_PATH)
+    if not path.exists():
+        log.error("news.json not found at %s — run site_pipeline.py first", path)
+        return []
+
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    stories = data.get("stories", [])
+    log.info("news.json loaded: %d stories (generated %s)", len(stories), data.get("generated_at", "?"))
+
+    # Drop feature spotlights (generated from docs, not real news)
+    real_news = [s for s in stories if not s.get("is_feature_spotlight", False)]
+    log.info("After spotlight filter: %d real news stories", len(real_news))
+
+    # Drop already-published URLs
+    fresh = [s for s in real_news if normalize_url(s.get("url", "")) not in published_urls]
+    log.info("After dedup filter: %d fresh stories", len(fresh))
+
+    return fresh
 
 
-def _pick_linkedin_story(
-    ranked: list[dict],
-    items: list[dict],
+def _pick_best_story(
+    stories: list[dict],
     client: anthropic.Anthropic,
+    focus_topics: str,
     performance_bonus: str,
     last_published_source: str,
-    focus_topics: str,
 ) -> dict | None:
-    """Ask Claude Haiku to pick the best story from the ranked top-N."""
-    candidates = [r for r in ranked if r.get("score", 0) >= MIN_SCORE][:5]
+    """Among the newsletter stories, pick the best one for LinkedIn.
+
+    Stories are already ranked/scored by site_pipeline.py (rank 1 = best).
+    We ask Claude Haiku for a final pick among the top candidates.
+    """
+    candidates = [s for s in stories if s.get("score", 0) >= MIN_SCORE]
+    if not candidates:
+        # Fallback: use all stories sorted by rank
+        candidates = sorted(stories, key=lambda s: s.get("rank", 99))
+    candidates = candidates[:5]
+
     if not candidates:
         return None
     if len(candidates) == 1:
-        return _enrich_from_items(candidates[0], items)
+        return candidates[0]
 
     lines = [
-        f"[{s.get('rank', '?')}] score={s.get('score', 0)} title={s.get('title', '')} url={s.get('url', '')}"
+        f"[{s.get('rank', '?')}] score={s.get('score', 0)} source={s.get('source', '')} "
+        f"title={s.get('title', '')} url={s.get('url', '')}"
         for s in candidates
     ]
     bonus_section = f"\nHISTORICAL PERFORMANCE:\n{performance_bonus}" if performance_bonus else ""
@@ -107,7 +117,8 @@ def _pick_linkedin_story(
     prompt = (
         f"Pick the single best story for a LinkedIn post targeting AI/developer professionals.\n\n"
         f"FOCUS: {focus_topics[:200]}\n{bonus_section}{diversity_section}\n\n"
-        f"STORIES:\n" + "\n".join(lines) + "\n\nReturn ONLY valid JSON: {\"rank\": <number>}"
+        f"STORIES:\n" + "\n".join(lines)
+        + "\n\nReturn ONLY valid JSON: {\"rank\": <number>}"
     )
     try:
         msg = client.messages.create(
@@ -124,83 +135,23 @@ def _pick_linkedin_story(
         for s in candidates:
             if s.get("rank") == chosen_rank:
                 log.info("Claude selected rank=%s: %s", chosen_rank, s.get("title"))
-                return _enrich_from_items(s, items)
+                return s
     except Exception as exc:
-        log.warning("Story selection LLM failed (%s) — falling back to top ranked", exc)
+        log.warning("Story selection LLM failed (%s) — using rank #1", exc)
 
-    return _enrich_from_items(max(candidates, key=lambda s: s.get("score", 0)), items)
-
-
-def _enrich_from_items(ranked_story: dict, items: list[dict]) -> dict:
-    """Attach the original RSS item fields (source, summary) to a ranked story dict."""
-    url = normalize_url(ranked_story.get("url", ""))
-    original = (
-        next((it for it in items if normalize_url(it["link"]) == url), None)
-        or next((it for it in items if it["title"] == ranked_story.get("title")), None)
-    )
-    result = dict(ranked_story)
-    if original:
-        result.setdefault("source", original.get("source", ""))
-        result.setdefault("summary", original.get("summary", ""))
-    return result
+    return min(candidates, key=lambda s: s.get("rank", 99))
 
 
-def _select_story(
-    items: list[dict],
-    client: anthropic.Anthropic,
-    focus_topics: str,
-    performance_bonus: str,
-    last_published_source: str,
-    published_urls: set[str],
-) -> tuple[str | None, dict | None]:
-    """Rank RSS items → pick best → validate → write → critique. Returns (comment, story)."""
-    # Exclude already-published URLs
-    fresh = [it for it in items if normalize_url(it["link"]) not in published_urls]
-    log.info("Items after dedup filter: %d (from %d total)", len(fresh), len(items))
-    if not fresh:
-        return None, None
-
-    ranked = rank_stories(
-        fresh,
-        client,
-        performance_bonus=performance_bonus,
-        last_published_source=last_published_source,
-        focus_topics=focus_topics,
-        top_n=len(fresh),
-    )
-    if not ranked:
-        log.warning("Ranking returned no results")
-        return None, None
-
-    story = _pick_linkedin_story(ranked, fresh, client, performance_bonus, last_published_source, focus_topics)
-    if not story:
-        log.info("No story met minimum score threshold")
-        return None, None
-
-    url = normalize_url(story.get("url", ""))
-    if not is_valid_url(url):
-        log.warning("Selected story has invalid URL '%s' — aborting", url)
-        return None, None
-
-    story["url"] = url
-
-    og = fetch_og_meta(url)
-    if not og.get("image"):
-        log.info("No thumbnail for '%s' — skipping", story.get("title"))
-        return None, None
-
-    story["og"] = og
-
+def _build_post(story: dict, client: anthropic.Anthropic) -> str | None:
+    """Write post + critique loop. Returns final comment or None on failure."""
     original = {
         "source": story.get("source", ""),
         "summary": story.get("summary", ""),
     }
-
-    log.info("Writing post for: %s (score=%s)", story.get("title"), story.get("score"))
     comment = write_post(story, original, client)
     if not comment:
         log.warning("write_post failed")
-        return None, None
+        return None
 
     for attempt in range(2):
         critique = critique_post(comment, client)
@@ -214,8 +165,7 @@ def _select_story(
             if retry:
                 comment = retry
 
-    comment = truncate_comment(comment)
-    return comment, story
+    return truncate_comment(comment)
 
 
 def main() -> None:
@@ -231,25 +181,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="LinkedIn AI News Post")
     parser.add_argument("--topic", type=str, default=None, help="Custom focus topic override")
     parser.add_argument("--no-confirm", action="store_true", help="Skip Telegram approval")
-    parser.add_argument(
-        "--claude-code-only",
-        action="store_true",
-        help="Only consider Claude Code / Anthropic news from RSS feeds",
-    )
     args = parser.parse_args()
 
-    raw_topic = args.topic or os.environ.get("TOPIC") or ""
-    focus = raw_topic or FOCUS_TOPICS
+    focus = args.topic or os.environ.get("TOPIC") or FOCUS_TOPICS
     skip_confirm = args.no_confirm or os.environ.get("SKIP_CONFIRM") == "1"
-    # Auto-detect claude-code-only mode from topic string
-    claude_code_only = args.claude_code_only or (
-        "claude" in raw_topic.lower() if raw_topic else False
-    )
 
     if focus != FOCUS_TOPICS:
         log.info("Using custom topic: %s", focus)
-    if claude_code_only:
-        log.info("Claude Code-only mode: filtering RSS to Anthropic / Claude-related items")
 
     tg_token  = os.environ["TELEGRAM_BOT_TOKEN"]
     tg_chat   = os.environ["TELEGRAM_CHAT_ID"]
@@ -262,7 +200,7 @@ def main() -> None:
     history = update_analytics(history, token)
     save_history(history)
 
-    # Adaptive ranking inputs
+    # Adaptive ranking inputs from past posts
     performance_bonus = compute_performance_bonuses(history)
     if performance_bonus:
         log.info("Adaptive ranking bonuses:\n%s", performance_bonus)
@@ -279,48 +217,63 @@ def main() -> None:
         log.info("Dedup filter: %d already-published URLs", len(published_urls))
 
     try:
-        # Fetch live RSS feeds — real dated articles only
-        items = fetch_feeds(days=7)
+        # Load today's newsletter stories (real news only, no spotlights)
+        stories = _load_newsletter_stories(published_urls)
 
-        if not items:
+        if not stories:
             notify(
-                "<b>AI LinkedIn Post</b>: no RSS items found in the last 7 days.",
+                "<b>AI LinkedIn Post</b>: nessuna storia disponibile in news.json — "
+                "tutte già pubblicate o solo spotlight. Esegui site_pipeline.py.",
                 tg_token, tg_chat,
             )
-            log.info("No RSS items — skipping LinkedIn post.")
+            log.info("No fresh newsletter stories — skipping LinkedIn post.")
             return
 
-        # Optional Claude Code filter
-        if claude_code_only:
-            items = _filter_claude_code(items)
-            if not items:
-                notify(
-                    "<b>AI LinkedIn Post</b>: no Claude Code / Anthropic news in the last 7 days.",
-                    tg_token, tg_chat,
-                )
-                log.info("No Claude Code items after filter — skipping.")
-                return
+        # Pick the best story among the newsletter
+        story = _pick_best_story(stories, client, focus, performance_bonus, last_published_source)
+        if not story:
+            notify(
+                "<b>AI LinkedIn Post</b>: nessuna storia supera il punteggio minimo.",
+                tg_token, tg_chat,
+            )
+            log.info("No story met minimum score — skipping.")
+            return
 
-        comment, story = _select_story(
-            items, client, focus, performance_bonus, last_published_source, published_urls
-        )
+        url = normalize_url(story.get("url", ""))
+        if not is_valid_url(url):
+            log.warning("Invalid URL '%s' — aborting", url)
+            return
+        story["url"] = url
 
+        # Fetch / use cached OG image
+        og = story.get("og_image")
+        if og:
+            story["og"] = {"image": og}
+        else:
+            story["og"] = fetch_og_meta(url)
+
+        if not story["og"].get("image"):
+            log.info("No thumbnail for '%s' — skipping", story.get("title"))
+            notify(
+                f"<b>AI LinkedIn Post</b>: storia selezionata senza thumbnail — skip.\n{url}",
+                tg_token, tg_chat,
+            )
+            return
+
+        # Write the LinkedIn post
+        comment = _build_post(story, client)
         if not comment:
-            notify(
-                "<b>AI LinkedIn Post</b>: no qualifying story found in today's RSS feed. "
-                "All recent items may already be published or lack a thumbnail.",
-                tg_token, tg_chat,
-            )
-            log.info("No qualifying story — skipping LinkedIn post.")
             return
 
-        log.info("Publishing: %s (score %s)", story["title"], story["score"])
+        log.info("Publishing: %s (score %s)", story["title"], story.get("score"))
 
+        # Telegram approval
         if not skip_confirm:
             preview = (
                 f"<b>\U0001f4dd Post da pubblicare su LinkedIn</b>\n\n"
                 f"<b>{story['title']}</b>\n"
-                f"\u2b50 Score: {story['score']}/10\n"
+                f"\u2b50 Score: {story.get('score', '?')}/10 • Rank #{story.get('rank', '?')}"
+                f" • {story.get('source', '')}\n"
                 f"\U0001f517 {story['url']}\n\n"
                 f"<i>{comment}</i>"
             )
@@ -336,7 +289,7 @@ def main() -> None:
             story["title"],
             person_id,
             token,
-            og=story.get("og"),
+            og=story["og"],
         )
 
         history[post_id] = {
@@ -355,10 +308,11 @@ def main() -> None:
         commit_history_to_git()
 
         notify(
-            "\u2705 <b>LinkedIn post published!</b>\n\n"
+            "\u2705 <b>LinkedIn post pubblicato!</b>\n\n"
             f"\U0001f4cc <b>{story['title']}</b>\n"
-            f"\U0001f517 {story['url']}\n"
-            f"\u2b50 Score: {story['score']}/10 (rank #{story.get('rank', '?')})\n\n"
+            f"\U0001f3f7 {story.get('source', '')} • "
+            f"\u2b50 Score: {story.get('score', 0)}/10 (rank #{story.get('rank', '?')})\n"
+            f"\U0001f517 {story['url']}\n\n"
             f"\U0001f4ac <i>{comment}</i>\n\n"
             f"\U0001f194 Post ID: {post_id}",
             tg_token, tg_chat,
