@@ -18,16 +18,15 @@ _RUBRIC_BASE = f"""\
 Score each story 0-10. Return ALL stories sorted by score descending.
 JSON format: {{\"ranked\": [{{\"rank\": 1, \"score\": 8, \"title\": \"...\", \"url\": \"...\"}}]}}
 
-SOURCE BONUS (pick the highest that applies):
-  +3  LLM Efficiency & Prompt Engineering: {", ".join(SOURCE_CATEGORIES["LLM Efficiency & Prompt Engineering"])}
-  +2  Agentic AI & Frameworks: {", ".join(SOURCE_CATEGORIES["Agentic AI & Frameworks"])}
-  +1  AI Labs: {", ".join(SOURCE_CATEGORIES["AI Labs"])}
-  +1  Practitioners & Researchers: {", ".join(SOURCE_CATEGORIES["Practitioners & Researchers"])}
+HARD FILTER — score 0 and rank last if:
+  - No meaningful AI angle (politics, sports, unrelated tech, generic business news)
+  - Pure clickbait with no substance
+  All other rules below apply only to AI-related content.
 
 CONTENT:
-  +2  Concrete release (model, product, open-source, benchmark)
+  +2  Concrete AI release (model, product, open-source, benchmark, paper)
   +1  Technical but accessible
-  -2  Opinion or commentary with no concrete news
+  -2  Opinion or commentary with no concrete AI news
   -3  Pure marketing, no technical content
 
 TOPIC:

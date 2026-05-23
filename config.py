@@ -2,17 +2,10 @@ import os
 from pathlib import Path
 
 RSS_FEEDS = {
-    # --- AI Labs ---
-    "OpenAI":             "https://openai.com/news/rss.xml",
-    "Anthropic":          "https://www.anthropic.com/rss.xml",
-    "Google DeepMind":    "https://deepmind.google/blog/rss.xml",
-    "Google AI Blog":     "https://blog.google/technology/ai/rss/",
-    "Microsoft Research": "https://www.microsoft.com/en-us/research/feed/",
-
     # --- Simone Rizzo ---
     "AI News (Simone Rizzo)": "https://ainews.it/feed/",
 
-    # --- Opinionated / analytical voices (Simone Rizzo editorial DNA) ---
+    # --- Opinionated / analytical voices ---
     "Ethan Mollick (One Useful Thing)": "https://www.oneusefulthing.org/feed",
     "Gary Marcus":                       "https://garymarcus.substack.com/feed",
     "AI Snake Oil":                      "https://aisnakeoil.substack.com/feed",
@@ -26,20 +19,12 @@ RSS_FEEDS = {
     "The Batch (deeplearning.ai)":       "https://www.deeplearning.ai/the-batch/feed/",
 
     # --- Practitioner researchers ---
-    "Sebastian Raschka":  "https://magazine.sebastianraschka.com/feed",
-    "Chip Huyen":         "https://huyenchip.com/feed.xml",
-    "Eugene Yan":         "https://eugeneyan.com/feed.xml",
-    "Lilian Weng":        "https://lilianweng.github.io/index.xml",
-    "Hamel Husain":       "https://hamel.dev/feed.xml",
-    "Jay Alammar":        "https://newsletter.languagemodels.co/feed",
-
-    # --- Industry news ---
-    "TechCrunch AI":  "https://techcrunch.com/category/artificial-intelligence/feed/",
-    "VentureBeat AI": "https://venturebeat.com/category/ai/feed/",
-
-    # --- Frameworks & tools (selected, high signal) ---
-    "Hugging Face":   "https://huggingface.co/blog/feed.xml",
-    "LangChain Blog": "https://blog.langchain.dev/rss/",
+    "Sebastian Raschka": "https://magazine.sebastianraschka.com/feed",
+    "Chip Huyen":        "https://huyenchip.com/feed.xml",
+    "Eugene Yan":        "https://eugeneyan.com/feed.xml",
+    "Lilian Weng":       "https://lilianweng.github.io/index.xml",
+    "Hamel Husain":      "https://hamel.dev/feed.xml",
+    "Jay Alammar":       "https://newsletter.languagemodels.co/feed",
 }
 
 FOCUS_TOPICS = (

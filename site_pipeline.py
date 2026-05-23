@@ -2,11 +2,13 @@
 """Daily AI newsletter digest pipeline.
 
 Flow:
-  1. Fetch RSS feeds (opinionated AI writers + labs)
-  2. Rank all items with Claude Haiku
-  3. Enrich top 5 with summary + considerations (La Malfa format)
-  4. Write news.json + index.html
-  5. Commit + push → Vercel auto-deploys
+  1. Fetch RSS feeds (opinionated AI bloggers/writers)
+  2. For each post: extract the PRIMARY source they're discussing (not the blogger's URL)
+  3. Deduplicate — multiple bloggers covering the same story → one entry
+  4. Rank with Claude Haiku (AI-only filter applied)
+  5. Enrich top 5 with summary + considerations (La Malfa format)
+  6. Write news.json + index.html
+  7. Commit + push → Vercel auto-deploys
 """
 
 import json
@@ -23,6 +25,7 @@ import anthropic
 from agents.feed_agent import fetch_feeds
 from agents.ranking_agent import rank_stories
 from agents.site_writer_agent import write_site_entry
+from agents.source_extractor_agent import extract_original_source
 from config import (
     FOCUS_TOPICS,
     NEWS_JSON_PATH,
@@ -105,14 +108,40 @@ def main() -> None:
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-    # 1. Fetch RSS feeds — last 7 days from all configured sources
-    all_items = fetch_feeds(days=7)
-    if not all_items:
+    # 1. Fetch RSS feeds — last 7 days from all configured blogger sources
+    raw_items = fetch_feeds(days=7)
+    if not raw_items:
         log.error("No items from RSS feeds — aborting")
         sys.exit(1)
-    log.info("RSS feeds: %d items collected", len(all_items))
+    log.info("RSS feeds: %d raw items collected", len(raw_items))
 
-    # 2. Rank all items with Claude Haiku
+    # 2. Extract primary source for each blogger post
+    #    (e.g. Ethan Mollick writes about GPT-5 → we use openai.com/blog/gpt-5)
+    #    Items with no clear primary source are kept with their original URL.
+    all_items: list[dict] = []
+    seen_extracted: set[str] = set()
+
+    for item in raw_items:
+        original = extract_original_source(item, client)
+        if original:
+            url = normalize_url(original["url"])
+            if url in seen_extracted:
+                log.debug("Dedup: multiple bloggers covered same source — skipping '%s'", url)
+                continue
+            seen_extracted.add(url)
+            enriched = dict(item)
+            enriched["link"] = url
+            enriched["title"] = original["title"] or item["title"]
+            enriched["source"] = original["source_name"] or item["source"]
+            enriched["blogger_context"] = item["summary"]  # original blogger analysis as context
+            all_items.append(enriched)
+        else:
+            # Blogger's own analysis — use as-is (original content, not a reaction)
+            all_items.append(item)
+
+    log.info("After source extraction: %d unique items", len(all_items))
+
+    # 3. Rank with Claude Haiku — AI-only focus enforced via FOCUS_TOPICS
     ranked = rank_stories(all_items, client, focus_topics=FOCUS_TOPICS, top_n=len(all_items))
     if not ranked:
         log.error("Ranking returned no results — aborting")
@@ -147,7 +176,15 @@ def main() -> None:
 
         source_name = original.get("source", "") if original else ""
         og = fetch_og_meta(url)
-        enrichment = write_site_entry(candidate, original, client)
+
+        # Use blogger's analysis as context if available, otherwise use RSS summary
+        if original and original.get("blogger_context"):
+            context_item = dict(original)
+            context_item["summary"] = original["blogger_context"]
+        else:
+            context_item = original
+
+        enrichment = write_site_entry(candidate, context_item, client)
 
         stories.append({
             "rank": candidate.get("rank"),
