@@ -121,11 +121,11 @@ ANALYTICS_MAX_AGE_DAYS = 21
 
 _ROOT = Path(__file__).parent
 NEWS_JSON_PATH = _ROOT / "site" / "news.json"
+NEWSLETTER_JSON_PATH = _ROOT / "site" / "newsletter.json"
 TEMPLATE_PATH = _ROOT / "site" / "template.html"
 SITE_OUTPUT_PATH = _ROOT / "site" / "index.html"
 
 # Fallback og:image per source — used when the article/changelog URL returns no image.
-# These are the source's homepage or brand page, which reliably return a good og:image.
 CHANGELOG_SOURCE_HOMEPAGES = {
     "Claude Code":        "https://www.anthropic.com",
     "Claude Code Docs":   "https://www.anthropic.com",
@@ -140,8 +140,6 @@ CHANGELOG_SOURCE_HOMEPAGES = {
 }
 
 # Changelog/release-notes pages scraped directly (no RSS).
-# Each URL should point to a "what's new" or release-notes page — not a generic blog
-# or marketing page — so the extractor finds dated, concrete changes.
 CHANGELOG_SOURCES = {
     "Claude Code":      "https://docs.anthropic.com/en/release-notes/claude-code",
     "Claude API":       "https://docs.anthropic.com/en/whats-new",
@@ -154,22 +152,11 @@ CHANGELOG_SOURCES = {
     "Amazon Q":         "https://aws.amazon.com/q/developer/",
 }
 
-# Claude Code docs pages used to generate self-made feature spotlight articles.
-# IMPORTANT: Only include pages for features that are genuinely new/recently-announced.
-# Stable documentation pages get re-generated as "new" every pipeline run and end up
-# being published on LinkedIn repeatedly. Prefer CHANGELOG_SOURCES for release content.
-CLAUDE_CODE_FEATURE_PAGES = [
-    # ("Claude Code Hooks", "https://docs.anthropic.com/en/docs/claude-code/hooks"),
-    # REMOVED: stable docs page — regenerated every run as if it were fresh news.
-    # Use CHANGELOG_SOURCES["Claude Code"] for actual release notes instead.
-    ("Claude Code MCP",            "https://docs.anthropic.com/en/docs/claude-code/mcp"),
-    ("Claude Code Sub-agents",     "https://docs.anthropic.com/en/docs/claude-code/sub-agents"),
-    ("Claude Code Memory",         "https://docs.anthropic.com/en/docs/claude-code/memory"),
-    ("Claude Code GitHub Actions", "https://docs.anthropic.com/en/docs/claude-code/github-actions"),
-    ("Claude Code Slash Commands", "https://docs.anthropic.com/en/docs/claude-code/slash-commands"),
-    ("Claude Code Settings",       "https://docs.anthropic.com/en/docs/claude-code/settings"),
-    ("Claude Code Tutorials",      "https://docs.anthropic.com/en/docs/claude-code/tutorials"),
-]
+# Feature spotlight pages — INTENTIONALLY EMPTY.
+# Doc-based spotlights generated "fake" news articles from static documentation pages.
+# Real Claude Code news comes from CHANGELOG_SOURCES["Claude Code"] above.
+# Add an entry here ONLY for a brand-new feature not yet in the release notes feed.
+CLAUDE_CODE_FEATURE_PAGES: list[tuple[str, str]] = []
 
 CODING_FOCUS_TOPICS = (
     "Claude Code, Cursor IDE, GitHub Copilot, OpenAI Codex, Windsurf, Codeium, "
