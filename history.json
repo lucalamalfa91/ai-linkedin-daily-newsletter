@@ -224,6 +224,45 @@
       "#AIAgents",
       "#DeveloperTools"
     ],
+    "analytics": {
+      "fetched_at": "2026-05-23T16:56:53.523831+00:00",
+      "reactions": 0,
+      "comments": 0,
+      "reposts": 0,
+      "impressions": 0,
+      "engagement_score": 0
+    }
+  },
+  "urn:li:share:7463996471172870145": {
+    "post_id": "urn:li:share:7463996471172870145",
+    "published_at": "2026-05-23T16:57:13.653163+00:00",
+    "article_url": "https://aws.amazon.com/q/developer/",
+    "article_title": "Amazon Q Developer agentic capabilities on SWE-Bench",
+    "source": "Amazon Q",
+    "score": 9,
+    "comment_text": "Amazon Q just topped the SWE-Bench leaderboard.\n\nSWE-Bench isn't a toy benchmark — it throws real GitHub issues at an agent and expects working code across multiple files, no hand-holding. Amazon Q Developer resolved more of them end-to-end than any other system tested. 🧩 That means reading the issue, navigating an unfamiliar codebase, making the right changes, and passing the tests.\n\nBenchmarks are like a driving test: passing it doesn't make you a good driver, but failing it tells you something real.\nIf an agent handled your last three bug tickets autonomously, which one would have quietly introduced a regression?\n#SoftwareEngineering #AIAgents #AmazonQ",
+    "topics": [
+      "amazon",
+      "developer",
+      "agentic",
+      "capabilities",
+      "bench",
+      "topped",
+      "leaderboard",
+      "benchmark",
+      "throws",
+      "real",
+      "github",
+      "issues",
+      "agent",
+      "expects",
+      "working"
+    ],
+    "hashtags": [
+      "#SoftwareEngineering",
+      "#AIAgents",
+      "#AmazonQ"
+    ],
     "analytics": null
   }
 }
