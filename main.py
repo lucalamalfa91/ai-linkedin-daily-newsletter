@@ -142,6 +142,15 @@ def _pick_best_story(
     return min(candidates, key=lambda s: s.get("rank", 99))
 
 
+def _build_og(story: dict) -> dict:
+    """Return OG dict. Uses og_image from news.json if present, otherwise fetches live."""
+    cached = story.get("og_image")
+    if cached:
+        return {"image": cached}
+    log.info("No cached og_image for '%s' — fetching live", story.get("title"))
+    return fetch_og_meta(story.get("url", ""))
+
+
 def _build_post(story: dict, client: anthropic.Anthropic) -> str | None:
     """Write post + critique loop. Returns final comment or None on failure."""
     original = {
@@ -245,20 +254,8 @@ def main() -> None:
             return
         story["url"] = url
 
-        # Fetch / use cached OG image
-        og = story.get("og_image")
-        if og:
-            story["og"] = {"image": og}
-        else:
-            story["og"] = fetch_og_meta(url)
-
-        if not story["og"].get("image"):
-            log.info("No thumbnail for '%s' — skipping", story.get("title"))
-            notify(
-                f"<b>AI LinkedIn Post</b>: storia selezionata senza thumbnail — skip.\n{url}",
-                tg_token, tg_chat,
-            )
-            return
+        # OG metadata (cached from news.json or fetched live — optional, no skip if missing)
+        story["og"] = _build_og(story)
 
         # Write the LinkedIn post
         comment = _build_post(story, client)
