@@ -264,5 +264,37 @@
       "#AmazonQ"
     ],
     "analytics": null
+  },
+  "urn:li:share:7464021245605457920": {
+    "post_id": "urn:li:share:7464021245605457920",
+    "published_at": "2026-05-23T18:35:39.993446+00:00",
+    "article_url": "https://www.latent.space/p/daytona",
+    "article_title": "Giving Agents Computers — Ivan Burazin, Daytona",
+    "source": "Latent Space",
+    "score": 10,
+    "comment_text": "850,000 agent sandbox executions. Per day.\n\nThe infrastructure layer for AI agents is maturing faster than most enterprise roadmaps anticipated — and it's not happening inside hyperscaler clouds, it's happening on bare metal built specifically for ephemeral, code-executing agents. 🖥️ The implication is concrete: if your agents can't spin up isolated, reproducible environments in milliseconds, you're not bottlenecked by the model — you're bottlenecked by the ground it runs on. In every architecture review I run right now, this is the gap nobody budgeted for.\n\nThe model is the easy part. The execution environment is where enterprise AI either scales or stalls.\nWhen your agents start writing and running code autonomously, which part of your current infrastructure stack becomes the ceiling?\n#EnterpriseAI #AIArchitecture #AIStrategy",
+    "topics": [
+      "giving",
+      "agents",
+      "computers",
+      "ivan",
+      "burazin",
+      "daytona",
+      "agent",
+      "sandbox",
+      "executions",
+      "infrastructure",
+      "layer",
+      "maturing",
+      "faster",
+      "than",
+      "most"
+    ],
+    "hashtags": [
+      "#EnterpriseAI",
+      "#AIArchitecture",
+      "#AIStrategy"
+    ],
+    "analytics": null
   }
 }
