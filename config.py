@@ -155,9 +155,13 @@ CHANGELOG_SOURCES = {
 }
 
 # Claude Code docs pages used to generate self-made feature spotlight articles.
-# Each entry: (feature_name, url). Claude Sonnet reads the page and writes the article.
+# IMPORTANT: Only include pages for features that are genuinely new/recently-announced.
+# Stable documentation pages get re-generated as "new" every pipeline run and end up
+# being published on LinkedIn repeatedly. Prefer CHANGELOG_SOURCES for release content.
 CLAUDE_CODE_FEATURE_PAGES = [
-    ("Claude Code Hooks",          "https://docs.anthropic.com/en/docs/claude-code/hooks"),
+    # ("Claude Code Hooks", "https://docs.anthropic.com/en/docs/claude-code/hooks"),
+    # REMOVED: stable docs page — regenerated every run as if it were fresh news.
+    # Use CHANGELOG_SOURCES["Claude Code"] for actual release notes instead.
     ("Claude Code MCP",            "https://docs.anthropic.com/en/docs/claude-code/mcp"),
     ("Claude Code Sub-agents",     "https://docs.anthropic.com/en/docs/claude-code/sub-agents"),
     ("Claude Code Memory",         "https://docs.anthropic.com/en/docs/claude-code/memory"),
