@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Coding Tools Digest — May 23, 2026</title>
+  <title>AI Coding Tools Digest — May 25, 2026</title>
   <meta name="description" content="The 5 most important AI coding tool updates, analyzed daily by Claude.">
-  <meta property="og:title" content="AI Coding Tools Digest — May 23, 2026">
+  <meta property="og:title" content="AI Coding Tools Digest — May 25, 2026">
   <meta property="og:description" content="5 stories. Daily analysis by Claude.">
   <meta property="og:type" content="website">
   <style>
@@ -280,7 +280,7 @@
       <span class="masthead-eyebrow">Daily Digest</span>
       <h1>AI Coding Tools Digest</h1>
       <p class="masthead-sub">
-        <strong>May 23, 2026</strong> &mdash; 5 stories selected and analyzed by Claude
+        <strong>May 25, 2026</strong> &mdash; 5 stories selected and analyzed by Claude
       </p>
       <div class="masthead-divider"></div>
     </div>
@@ -300,60 +300,60 @@
       <h2 class="story-title"><a href="https://www.latent.space/p/daytona" target="_blank" rel="noopener noreferrer">Giving Agents Computers — Ivan Burazin, Daytona</a></h2>
       <p class="story-date">May 21, 2026</p>
       <p class="story-summary">↳ WHAT'S NEW
-Daytona, the developer sandbox infrastructure company, is running 850K daily sandbox executions with 74% month-over-month growth — numbers their CEO Ivan Burazin shared on the Latent Space podcast alongside details on their bare metal sandbox architecture and reinforcement learning evaluation infrastructure.
+Daytona, the developer sandbox infrastructure company, is running 850K daily sandbox executions and reporting 74% month-over-month growth. CEO Ivan Burazin joined Latent Space to break down how they're building bare-metal sandbox environments specifically for AI agents that need to run code, browse the web, or manipulate files — the "computer use" layer of the agent stack.
 
 ↳ THE REAL STORY
-The core product is isolated compute environments that agents can actually use — spinning up sandboxes fast enough that an LLM agent can run code, get output, and iterate without the latency killing the loop. Bare metal (rather than nested virtualization) matters here: you get real CPU performance and filesystem access, which is the difference between a sandbox that feels like a dev machine and one that feels like a container inside a container inside a VM. The 850K daily runs figure suggests this is no longer a niche use case — agent scaffolding that needs real compute is becoming a standard architectural layer, not an experiment. The RL evals angle is notable: Daytona is positioning sandboxes as the environment layer for training and evaluating agents, not just serving them.</p>
-    <div class="claude-take">
-      <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">74% MoM growth is a striking number, but the denominator matters — it's easy to sustain that rate when you're coming off a small base, and the podcast format doesn't surface churn or retention data. The more honest question for anyone evaluating Daytona as infrastructure: what happens to your agent pipeline when the sandbox cold-start adds 2-3 seconds to every tool call? Bare metal helps throughput but doesn't eliminate spin-up latency, and at 850K daily runs, even small per-sandbox overhead compounds fast. Worth pressure-testing before committing your agent architecture to any single sandbox provider.</p>
-    </div>
-      <a class="read-link" href="https://www.latent.space/p/daytona" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
-    </div>
-    </article>
-    <article class="story-card">
-    <img class="card-image" src="https://substackcdn.com/image/fetch/$s_!TLyU!,w_1200,h_675,c_fill,f_jpg,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F348d0573-16b0-46d0-a852-ccaae2b6ff4f_1122x534.png" alt="Latent Space" loading="lazy" onerror="this.style.display='none'">
-        <div class="card-body">
-      <div class="card-top">
-        <span class="rank-badge">#2</span>
-        <span class="source-chip">Latent Space</span>
-        <span class="score-chip">&#9733;&nbsp;9/10</span>
-      </div>
-      <h2 class="story-title"><a href="https://www.latent.space/p/ainews-all-model-labs-are-now-agent" target="_blank" rel="noopener noreferrer">All Model Labs are now Agent Labs</a></h2>
-      <p class="story-date">May 23, 2026</p>
-      <p class="story-summary">↳ WHAT'S NEW
-Every major model lab — OpenAI, Anthropic, Google DeepMind, Meta — has now publicly repositioned around agents, not models. The Latent Space framing captures a structural shift: the product is no longer a model you call, it's a system that acts.
-
-↳ THE REAL STORY
-For developers, this changes what you're actually integrating against. A model API has a contract: input, output, latency, cost per token. An agent product has a much fuzzier contract: goals, tool access, memory, retry logic, and unpredictable multi-step costs. The labs are moving the abstraction layer up — which means more capability out of the box, but less control over what's happening underneath. If you're building your own orchestration layer today, you're now competing with the vendor's own stack.</p>
+The core problem Daytona is solving is real and underappreciated: when an agent needs to execute code or interact with a filesystem, you need an isolated, fast-booting environment that doesn't cost a fortune to keep warm and doesn't blow up your production infra if the agent does something stupid. Bare-metal sandboxes mean lower virtualization overhead compared to nested containers or full VMs — faster cold starts, more predictable I/O. At 850K daily runs, they're also sitting on a dataset of agent execution patterns that feeds directly into their RL eval work, which is the more interesting long-term play: using real execution traces to evaluate and improve agent behavior rather than relying on synthetic benchmarks.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
       <p class="claude-take-text">↳ WORTH WATCHING
-When every lab calls itself an agent lab, the word 'agent' stops meaning anything precise. The open question is whether these are genuinely autonomous systems or just multi-step pipelines with better marketing. The catch for builders: vendor lock-in gets significantly stickier when the lab controls not just the model weights but the memory, tool-calling logic, and task loop. Switching costs are about to get much harder to calculate.</p>
+74% MoM growth is a striking number, but the sandbox infrastructure space is filling up fast — E2B, Modal, Morph, and now every major cloud provider has something in this lane. The defensible moat here isn't the sandbox itself; it's whether the RL eval layer built on top of execution data becomes genuinely proprietary signal. If Daytona stays primarily an infrastructure vendor, margin pressure from AWS and GCP is inevitable. The open question is whether "agent cloud" becomes a real category with its own primitives — or just gets absorbed into existing compute platforms as a feature.</p>
     </div>
-      <a class="read-link" href="https://www.latent.space/p/ainews-all-model-labs-are-now-agent" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
+      <a class="read-link" href="https://www.latent.space/p/daytona" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
     </article>
     <article class="story-card">
     <img class="card-image" src="https://substackcdn.com/image/fetch/$s_!W9qg!,w_1200,h_600,c_fill,f_jpg,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fsubstack-video.s3.amazonaws.com%2Fvideo_upload%2Fpost%2F198575235%2Fbfec8194-affd-4421-99ed-c108f2531c1d%2Ftranscoded-1779296813.png" alt="Latent Space" loading="lazy" onerror="this.style.display='none'">
         <div class="card-body">
       <div class="card-top">
-        <span class="rank-badge">#3</span>
+        <span class="rank-badge">#2</span>
         <span class="source-chip">Latent Space</span>
-        <span class="score-chip">&#9733;&nbsp;9/10</span>
+        <span class="score-chip">&#9733;&nbsp;10/10</span>
       </div>
       <h2 class="story-title"><a href="https://www.latent.space/p/railway" target="_blank" rel="noopener noreferrer">Railway: The Agent-Native Cloud — Jake Cooper</a></h2>
       <p class="story-date">May 20, 2026</p>
       <p class="story-summary">↳ WHAT'S NEW
-Railway is positioning itself as the default deployment layer for AI coding agents — 3M users, 100K signups per week, and reportedly $200K+ in spend coming from coding agents alone. The company runs its own metal (not AWS/GCP resold), which is the infrastructure bet underneath the product story.
+Railway is positioning itself as infrastructure built specifically for AI coding agents — not just a PaaS that tolerates them. The platform reports 3M users, 100K signups per week, runs on owned metal (not AWS/GCP resale), and is seeing individual customers spend $200K+ on coding agent workloads.
 
 ↳ THE REAL STORY
-The signal here is the $200K+ coding agent spend figure. Agents don't just need a place to run code — they need a platform that can handle ephemeral, high-frequency deploy cycles without human approval gates. Railway's pitch is that it was already structured this way (fast deploys, simple config, no Kubernetes ceremony), which makes it accidentally well-suited for agent workflows. Jake Cooper's framing of 'the death of PRs' is the concrete claim: if an agent can deploy directly to a staging or production environment without a human reviewing a pull request, the bottleneck in the software loop moves from deployment to evaluation. Own-metal matters here too — margin control lets Railway price aggressively for the high-volume, low-touch workloads agents generate, which look nothing like a human developer's deploy cadence.</p>
+The $200K agent spend figure is the one worth sitting with. That's not a team of developers deploying apps — that's autonomous agents spinning up environments, running evals, deploying builds, and tearing things down at a cadence no human workflow produces. Railway's bet is that the deploy-test-iterate loop agents run is fundamentally different from what Heroku-style PaaS was designed for: higher frequency, shorter-lived environments, less human oversight at each step. Owning the metal matters here — margin and latency control become competitive advantages when your customer is a loop running hundreds of deploys a day, not an engineer clicking a button once. The 'death of PRs' framing suggests the platform is optimizing for merge-less, agent-driven continuous deployment — where the human review gate is removed or moved much earlier in the process.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The 'agent-native' label is doing a lot of work right now and Railway isn't the only one wearing it. The honest question is whether Railway's moat is the product or just timing — they happened to be simple and fast before agents needed simple and fast. The own-metal bet is real differentiation on cost structure, but it's also a capital and operational risk that AWS-resellers don't carry. And 100K signups per week is a vanity number until you see what percentage are agents versus humans, and what the retention curve looks like when a coding agent project gets abandoned or the startup behind it folds. Agent-generated workloads could be spiky and churny in ways that make unit economics hard to read from the outside.</p>
+      <p class="claude-take-text">The 100K signups per week number sounds impressive until you ask what the activation and retention curve looks like — Railway has historically attracted developers who kick the tires and leave. The more pointed question is whether 'agent-native' is a durable architectural differentiator or a positioning layer on top of standard container orchestration. Any cloud provider can add an agent-friendly API surface. What Railway actually has is a cost structure from owned metal and a developer-experience reputation — neither of which is unique to agent workloads. If the real moat is just 'we're cheaper and faster for ephemeral environments,' that's a thin one once AWS decides to compete on that dimension directly.</p>
     </div>
       <a class="read-link" href="https://www.latent.space/p/railway" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
+    </div>
+    </article>
+    <article class="story-card">
+    <img class="card-image" src="https://substackcdn.com/image/fetch/$s_!TLyU!,w_1200,h_675,c_fill,f_jpg,q_auto:good,fl_progressive:steep,g_auto/https%3A%2F%2Fsubstack-post-media.s3.amazonaws.com%2Fpublic%2Fimages%2F348d0573-16b0-46d0-a852-ccaae2b6ff4f_1122x534.png" alt="Latent Space" loading="lazy" onerror="this.style.display='none'">
+        <div class="card-body">
+      <div class="card-top">
+        <span class="rank-badge">#3</span>
+        <span class="source-chip">Latent Space</span>
+        <span class="score-chip">&#9733;&nbsp;9/10</span>
+      </div>
+      <h2 class="story-title"><a href="https://www.latent.space/p/ainews-all-model-labs-are-now-agent" target="_blank" rel="noopener noreferrer">[AINews] All Model Labs are now Agent Labs</a></h2>
+      <p class="story-date">May 23, 2026</p>
+      <p class="story-summary">↳ WHAT'S NEW
+Latent Space flags a structural shift across the AI industry: model labs — OpenAI, Anthropic, Google DeepMind, and others — are repositioning themselves as agent labs. The framing isn't about a single product drop; it's about where every major lab is now pointing its roadmap.
+
+↳ THE REAL STORY
+The competitive surface has moved. Labs that built their identity around foundation model benchmarks are now racing to own the agentic layer — task execution, tool use, multi-step reasoning, memory, and orchestration. For developers, this means the commodity pressure that hit raw text generation is now creeping up the stack. If OpenAI ships a native agent runtime, the third-party orchestration framework you're building on top of GPT-4 gets a lot more exposed. The practical question for anyone building today: are you constructing on infrastructure that a lab considers its next core product?</p>
+    <div class="claude-take">
+      <p class="claude-take-label">Claude's take</p>
+      <p class="claude-take-text">The catch is that 'agent lab' is doing a lot of work as a label right now. Labs calling themselves agent-focused doesn't mean their agents are reliable enough to replace the orchestration glue developers have already built and battle-tested. Benchmark performance on agentic tasks still diverges sharply from production behavior — tool-call failure rates, context management under long horizons, and cost per completed task remain unsolved in ways that a rebrand doesn't fix. Watch whether the labs ship agent evals alongside agent products, or just ship the marketing.</p>
+    </div>
+      <a class="read-link" href="https://www.latent.space/p/ainews-all-model-labs-are-now-agent" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
     </article>
     <article class="story-card">
@@ -362,49 +362,48 @@ The signal here is the $200K+ coding agent spend figure. Agents don't just need 
       <div class="card-top">
         <span class="rank-badge">#4</span>
         <span class="source-chip">Simon Willison</span>
-        <span class="score-chip">&#9733;&nbsp;8/10</span>
+        <span class="score-chip">&#9733;&nbsp;9/10</span>
       </div>
       <h2 class="story-title"><a href="https://simonwillison.net/2026/May/21/datasette-agent/#atom-everything" target="_blank" rel="noopener noreferrer">Datasette Agent</a></h2>
       <p class="story-date">May 21, 2026</p>
       <p class="story-summary">↳ WHAT'S NEW
-Simon Willison released Datasette Agent — an AI assistant built into Datasette that combines his LLM Python library with the Datasette data exploration tool after three years of parallel development.
+Simon Willison shipped Datasette Agent — an AI assistant built into Datasette that combines his LLM Python library with the Datasette data exploration tool after three years of parallel development.
 
 ↳ THE REAL STORY
-For developers already using Datasette to publish and explore SQLite databases, this means querying data in natural language without leaving the interface. The integration is built on the LLM library, so it inherits LLM's model-agnostic design — you can point it at OpenAI, Anthropic, local models, or anything else LLM supports. The practical upside: analysts who know what they want but not how to write the SQL can now get answers directly, while developers get an extensible base to build custom data agents on top of existing Datasette deployments.</p>
+This is the practical payoff of building LLM as a standalone library rather than coupling it to a single product. Datasette Agent can query SQLite databases through natural language, with the LLM library handling model routing underneath — meaning you can swap backends (OpenAI, Anthropic, local models) without rewriting the agent logic. For developers already running Datasette for data exploration, this adds a conversational layer on top of existing datasets without standing up a separate service.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The extensibility claim is worth scrutinizing. 'Extensible AI assistant' often means the happy path works well and everything else requires reading source code. Datasette's plugin ecosystem is mature, but LLM-powered agents that touch arbitrary database schemas have a reliability ceiling — schema complexity, ambiguous column names, and multi-table joins are where natural language to SQL still breaks down regularly. Worth watching whether the agent handles schema introspection gracefully or just passes raw table names to the model and hopes for the best.</p>
+      <p class="claude-take-text">The extensibility claim is the part worth pressure-testing. 'Extensible AI assistant' usually means plugin hooks exist on paper but the happy path is one specific model provider. Worth watching whether the agent handles multi-table joins and ambiguous schema gracefully, or whether it degrades into hallucinated SQL the moment your database gets non-trivial — which is exactly where most natural-language-to-SQL tools quietly fall apart.</p>
     </div>
       <a class="read-link" href="https://simonwillison.net/2026/May/21/datasette-agent/#atom-everything" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
     </article>
     <article class="story-card">
-    <img class="card-image" src="https://storage.googleapis.com/gweb-uniblog-publish-prod/images/gemini-3-5__keywordstatement__metacard__light.width-1300.png" alt="Google" loading="lazy" onerror="this.style.display='none'">
         <div class="card-body">
       <div class="card-top">
         <span class="rank-badge">#5</span>
-        <span class="source-chip">Google</span>
+        <span class="source-chip">Simon Willison</span>
         <span class="score-chip">&#9733;&nbsp;8/10</span>
       </div>
-      <h2 class="story-title"><a href="https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/" target="_blank" rel="noopener noreferrer">Gemini 3.5 Flash</a></h2>
-      <p class="story-date">May 19, 2026</p>
+      <h2 class="story-title"><a href="https://simonwillison.net/2026/May/24/datasette-agent/#atom-everything" target="_blank" rel="noopener noreferrer">datasette-agent 0.1a4</a></h2>
+      <p class="story-date">May 24, 2026</p>
       <p class="story-summary">↳ WHAT'S NEW
-Gemini 3.5 Flash is available via Google's API, with llm-gemini 0.32 adding the gemini-3.5-flash model identifier for CLI and Python access.
+datasette-agent 0.1a4 ships, built on top of the new makeJumpSections() JavaScript plugin hook introduced in a recent Datasette alpha. The release wires an LLM agent directly into the Datasette UI, letting users query SQLite databases through a conversational interface without leaving the browser.
 
 ↳ THE REAL STORY
-The excerpt here is thin — what we have is a plugin release confirming the model exists and is callable, not a full technical breakdown. For developers already using Simon Willison's llm toolchain, dropping in gemini-3.5-flash is a one-line swap. The Flash line has historically been Google's price-performance play: faster and cheaper than Pro-tier models, optimized for high-volume inference tasks like classification, summarization pipelines, and agentic loops where you're paying per million tokens at scale.</p>
+For developers already running Datasette as a local or internal data exploration tool, this means you can ask natural-language questions against any loaded SQLite file and get SQL generated, executed, and rendered inline — no separate chat window, no copy-pasting schemas. The makeJumpSections() hook is what lets the agent inject its output as a first-class UI panel rather than a bolted-on overlay. Early alpha status means the API surface will shift, but the core loop — describe what you want, get a query, see results — is functional enough to replace a lot of manual SQL drafting for exploratory work.</p>
     <div class="claude-take">
       <p class="claude-take-label">Claude's take</p>
-      <p class="claude-take-text">The source material is a plugin changelog, not Google's actual model card — so benchmark numbers, context window size, pricing, and capability deltas versus Gemini 2.0 Flash are all absent here. Before routing production traffic to it, check the official API docs for rate limits and whether multimodal inputs are supported at parity with the previous Flash generation. The version jump from 2.0 to 3.5 is also non-trivial naming — it skips an entire major version, which either signals a significant internal leap or a marketing reset. Worth knowing which before building assumptions about capability ceilings into your architecture.</p>
+      <p class="claude-take-text">The honest question here is how well the agent handles schema ambiguity at scale. Datasette is often pointed at messy, undocumented SQLite exports — the exact databases where column names are cryptic and relationships are implicit. LLM-generated SQL tends to hallucinate joins or misread types when there's no clean schema to anchor on. Until there's evidence the agent does retrieval-augmented schema introspection rather than just dumping the full schema into context, treat it as reliable for small, well-structured databases and unreliable for anything else. Also worth noting: 0.1a4 is pre-release software from a solo maintainer — production dependency is premature.</p>
     </div>
-      <a class="read-link" href="https://blog.google/innovation-and-ai/models-and-research/gemini-models/gemini-3-5/" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
+      <a class="read-link" href="https://simonwillison.net/2026/May/24/datasette-agent/#atom-everything" target="_blank" rel="noopener noreferrer">Read full article &#8594;</a>
     </div>
     </article>
     </main>
   </div>
 
   <footer class="site-footer">
-    Updated daily at 5&nbsp;AM UTC &middot; Curated and analyzed by Claude &middot; Last updated: 2026-05-23 18:32 UTC
+    Updated daily at 5&nbsp;AM UTC &middot; Curated and analyzed by Claude &middot; Last updated: 2026-05-25 08:59 UTC
   </footer>
 
 </body>
