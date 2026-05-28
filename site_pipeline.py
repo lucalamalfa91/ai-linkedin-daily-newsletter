@@ -109,7 +109,7 @@ def main() -> None:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
     # 1. Fetch RSS feeds — last 7 days from all configured blogger sources
-    raw_items = fetch_feeds(days=7)
+    raw_items = fetch_feeds(days=1)
     if not raw_items:
         log.error("No items from RSS feeds — aborting")
         sys.exit(1)
