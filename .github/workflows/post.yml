@@ -51,7 +51,10 @@ jobs:
           if [ "${{ github.event.inputs.claude_code_only }}" = "true" ]; then
             EXTRA_FLAGS="--claude-code-only"
           fi
-          python main.py $EXTRA_FLAGS
+          if [ -n "$TOPIC" ]; then
+            EXTRA_FLAGS="$EXTRA_FLAGS --topic \"$TOPIC\""
+          fi
+          eval python main.py $EXTRA_FLAGS
 
       - name: Notify on failure
         if: failure()

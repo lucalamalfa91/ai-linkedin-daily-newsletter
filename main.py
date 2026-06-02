@@ -26,6 +26,7 @@ from agents.writer_agent import critique_post, truncate_comment, write_post
 from config import CHANGELOG_SOURCE_HOMEPAGES, NEWSLETTER_URL, NEWS_JSON_PATH
 from utils.history import commit_history_to_git, extract_hashtags, extract_topics, load_history, save_history
 from utils.og_meta import fetch_og_meta
+from utils.page_scraper import fetch_page_text
 from utils.url_utils import is_valid_url, normalize_url
 
 logging.basicConfig(
@@ -143,6 +144,87 @@ def _build_post(story: dict, client: anthropic.Anthropic) -> str | None:
     return truncate_comment(comment)
 
 
+def _run_url_pipeline(
+    url: str,
+    skip_confirm: bool,
+    client: anthropic.Anthropic,
+    tg_token: str,
+    tg_chat: str,
+    token: str,
+    person_id: str,
+    history: dict,
+) -> None:
+    """Direct article pipeline: fetch URL → write post → publish. No feed/ranking."""
+    url = normalize_url(url)
+    if not is_valid_url(url):
+        log.error("Invalid URL for direct pipeline: %s", url)
+        notify(f"❌ URL non valido per il pipeline diretto: {url}", tg_token, tg_chat)
+        sys.exit(1)
+
+    log.info("Direct URL pipeline: %s", url)
+
+    og = fetch_og_meta(url)
+    title = og.get("description") or url
+    body = fetch_page_text(url)
+
+    if not body:
+        log.warning("Could not fetch article body from %s — proceeding with OG description only", url)
+
+    story = {
+        "url": url,
+        "title": title,
+        "source": url.split("/")[2],  # hostname as source
+        "body": body,
+        "og": og,
+    }
+    original = {"summary": og.get("description", ""), "source": story["source"]}
+
+    comment = _build_post(story, client)
+    if not comment:
+        notify("❌ write_post fallito nel pipeline diretto.", tg_token, tg_chat)
+        sys.exit(1)
+
+    if not skip_confirm:
+        preview = (
+            f"<b>\U0001f4dd Post da pubblicare su LinkedIn</b>\n\n"
+            f"<b>{title}</b>\n"
+            f"\U0001f517 {url}\n\n"
+            f"<i>{comment}</i>"
+        )
+        approved = request_approval(preview, tg_token, tg_chat)
+        if not approved:
+            notify("⏭ Post annullato o timeout — nessuna pubblicazione.", tg_token, tg_chat)
+            log.info("Post not approved — skipping LinkedIn publication")
+            return
+
+    post_id = publish(comment, url, title, person_id, token, og=og)
+
+    history[post_id] = {
+        "post_id":       post_id,
+        "published_at":  datetime.now(timezone.utc).isoformat(),
+        "article_url":   url,
+        "article_title": title,
+        "source":        story["source"],
+        "score":         None,
+        "comment_text":  comment,
+        "topics":        extract_topics(title, comment),
+        "hashtags":      extract_hashtags(comment),
+        "analytics":     None,
+    }
+    save_history(history)
+    commit_history_to_git()
+
+    notify(
+        "✅ <b>LinkedIn post pubblicato!</b>\n\n"
+        f"\U0001f4cc <b>{title}</b>\n"
+        f"\U0001f517 {url}\n\n"
+        f"\U0001f4ac <i>{comment}</i>\n\n"
+        f"\U0001f194 Post ID: {post_id}",
+        tg_token, tg_chat,
+    )
+    log.info("Direct URL pipeline completed successfully")
+
+
 def main() -> None:
     _load_env()
     _require_env(
@@ -155,6 +237,7 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="LinkedIn AI News Post")
     parser.add_argument("--no-confirm", action="store_true", help="Skip Telegram approval")
+    parser.add_argument("--topic", default="", help="URL to write about directly (skips feed/ranking)")
     args = parser.parse_args()
 
     skip_confirm = args.no_confirm or os.environ.get("SKIP_CONFIRM") == "1"
@@ -169,6 +252,17 @@ def main() -> None:
     history = load_history()
     history = update_analytics(history, token)
     save_history(history)
+
+    # Direct URL mode: bypass feed/ranking entirely
+    topic = args.topic.strip() or os.environ.get("TOPIC", "").strip()
+    if topic.startswith("http://") or topic.startswith("https://"):
+        try:
+            _run_url_pipeline(topic, skip_confirm, client, tg_token, tg_chat, token, person_id, history)
+        except Exception as exc:
+            log.exception("Direct URL pipeline failed")
+            notify(f"❌ <b>AI LinkedIn Post FAILED</b>\n\n{exc}", tg_token, tg_chat)
+            sys.exit(1)
+        return
 
     published_urls: set[str] = set()
     if history:
