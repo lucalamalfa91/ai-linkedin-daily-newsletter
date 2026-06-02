@@ -73,11 +73,14 @@ def write_post(story: dict, original: dict | None, client: anthropic.Anthropic) 
     """Generate LinkedIn post text via Claude Sonnet. Returns comment string or None."""
     summary = (original.get("summary") or "")[:300] if original else ""
     source = original.get("source", "") if original else ""
+    body = (story.get("body") or "")[:2000]
+
+    content_section = f"Article content:\n{body}\n\n" if body else f"Summary: {summary}\n\n"
 
     user = (
         f"Story: {story['title']}\n"
         f"Source: {source}\n"
-        f"Summary: {summary}\n\n"
+        f"{content_section}"
         "Example of a good hook: \"OpenAI just killed the fine-tuning excuse.\"\n"
         "Example of a good question: \"Which part of your stack breaks first when agents start writing agents?\"\n\n"
         "Do NOT include the URL — it is attached as a link card automatically.\n\n"
