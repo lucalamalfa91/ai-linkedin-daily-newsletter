@@ -1,4 +1,3 @@
-import io
 import json
 import logging
 import re
@@ -9,6 +8,20 @@ from agents.publisher_agent import upload_document
 from config import BANNED_WORDS
 
 log = logging.getLogger(__name__)
+
+# Helvetica supports Latin-1 only — map common Unicode typographic chars to ASCII equivalents
+_UNICODE_TO_ASCII = str.maketrans({
+    "—": "-",   # em dash —
+    "–": "-",   # en dash –
+    "‘": "'",   # left single quote '
+    "’": "'",   # right single quote '
+    "“": '"',   # left double quote "
+    "”": '"',   # right double quote "
+    "…": "...", # ellipsis …
+    "→": ">",   # rightwards arrow →
+    "·": "*",   # middle dot ·
+    "•": "-",   # bullet •
+})
 
 _CAROUSEL_SYSTEM = """\
 You are writing a LinkedIn carousel (document post) for Luca La Malfa, an AI Architect advising enterprises.
@@ -76,6 +89,12 @@ def generate_slides(story: dict, client: anthropic.Anthropic) -> dict | None:
         return None
 
 
+def _s(text: str) -> str:
+    """Sanitize text to Latin-1 for Helvetica: replace typographic Unicode with ASCII equivalents."""
+    text = text.translate(_UNICODE_TO_ASCII)
+    return text.encode("latin-1", errors="replace").decode("latin-1")
+
+
 def build_pdf(slides: list[dict]) -> bytes:
     """Generate a square PDF carousel from slide dicts using fpdf2. Returns raw bytes."""
     from fpdf import FPDF
@@ -115,12 +134,12 @@ def build_pdf(slides: list[dict]) -> bytes:
             pdf.set_font("Helvetica", style="B", size=20)
             pdf.set_text_color(*WHITE)
             pdf.set_xy(10, 30)
-            pdf.multi_cell(PAGE_W - 20, 9, slide.get("title", ""), align="C")
+            pdf.multi_cell(PAGE_W - 20, 9, _s(slide.get("title", "")), align="C")
             # Subtitle — small, gray, centered near bottom
             pdf.set_font("Helvetica", size=9)
             pdf.set_text_color(*GRAY)
             pdf.set_xy(10, PAGE_H - 22)
-            pdf.multi_cell(PAGE_W - 20, 5, slide.get("subtitle", ""), align="C")
+            pdf.multi_cell(PAGE_W - 20, 5, _s(slide.get("subtitle", "")), align="C")
             _draw_accent_bar(PAGE_H - 14)
 
         elif stype == "content":
@@ -129,7 +148,7 @@ def build_pdf(slides: list[dict]) -> bytes:
             pdf.set_font("Helvetica", style="B", size=13)
             pdf.set_text_color(*WHITE)
             pdf.set_xy(10, 18)
-            pdf.multi_cell(PAGE_W - 20, 7, slide.get("heading", ""), align="L")
+            pdf.multi_cell(PAGE_W - 20, 7, _s(slide.get("heading", "")), align="L")
             # Bullets
             pdf.set_font("Helvetica", size=10)
             y_cursor = pdf.get_y() + 4
@@ -141,7 +160,7 @@ def build_pdf(slides: list[dict]) -> bytes:
                 # Bullet text in gray
                 pdf.set_text_color(*GRAY)
                 pdf.set_xy(16, y_cursor)
-                pdf.multi_cell(PAGE_W - 26, 6, bullet, align="L")
+                pdf.multi_cell(PAGE_W - 26, 6, _s(bullet), align="L")
                 y_cursor = pdf.get_y() + 2
             _draw_accent_bar(PAGE_H - 10)
 
@@ -151,12 +170,12 @@ def build_pdf(slides: list[dict]) -> bytes:
             pdf.set_font("Helvetica", style="B", size=12)
             pdf.set_text_color(*WHITE)
             pdf.set_xy(10, 20)
-            pdf.multi_cell(PAGE_W - 20, 7, slide.get("question", ""), align="C")
+            pdf.multi_cell(PAGE_W - 20, 7, _s(slide.get("question", "")), align="C")
             # CTA
             pdf.set_font("Helvetica", size=9)
             pdf.set_text_color(*ACCENT)
             pdf.set_xy(10, PAGE_H - 22)
-            pdf.multi_cell(PAGE_W - 20, 5, slide.get("cta", ""), align="C")
+            pdf.multi_cell(PAGE_W - 20, 5, _s(slide.get("cta", "")), align="C")
             _draw_accent_bar(PAGE_H - 14)
 
     return bytes(pdf.output())
