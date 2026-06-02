@@ -15,6 +15,15 @@ on:
         description: 'Only publish Claude Code / Anthropic news (true/false)'
         required: false
         default: 'false'
+      post_type:
+        description: 'LinkedIn post format'
+        required: false
+        default: 'carousel'
+        type: choice
+        options:
+          - carousel
+          - article
+          - text
 
 jobs:
   post:
@@ -46,6 +55,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TOPIC: ${{ github.event.inputs.topic }}
+          POST_TYPE: ${{ github.event.inputs.post_type }}
         run: |
           EXTRA_FLAGS=""
           if [ "${{ github.event.inputs.claude_code_only }}" = "true" ]; then
