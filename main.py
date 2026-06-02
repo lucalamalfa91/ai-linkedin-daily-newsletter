@@ -276,7 +276,7 @@ def main() -> None:
     args = parser.parse_args()
 
     skip_confirm = args.no_confirm or os.environ.get("SKIP_CONFIRM") == "1"
-    post_type = args.post_type or os.environ.get("POST_TYPE", "article")
+    post_type = args.post_type or os.environ.get("POST_TYPE", "carousel")
 
     tg_token  = os.environ["TELEGRAM_BOT_TOKEN"]
     tg_chat   = os.environ["TELEGRAM_CHAT_ID"]
