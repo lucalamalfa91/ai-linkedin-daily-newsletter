@@ -263,7 +263,14 @@
       "#AIAgents",
       "#AmazonQ"
     ],
-    "analytics": null
+    "analytics": {
+      "fetched_at": "2026-06-02T05:53:03.590450+00:00",
+      "reactions": 0,
+      "comments": 0,
+      "reposts": 0,
+      "impressions": 0,
+      "engagement_score": 0
+    }
   },
   "urn:li:share:7464021245605457920": {
     "post_id": "urn:li:share:7464021245605457920",
@@ -289,6 +296,45 @@
       "faster",
       "than",
       "most"
+    ],
+    "hashtags": [
+      "#EnterpriseAI",
+      "#AIArchitecture",
+      "#AIStrategy"
+    ],
+    "analytics": {
+      "fetched_at": "2026-06-02T05:53:04.103485+00:00",
+      "reactions": 0,
+      "comments": 0,
+      "reposts": 0,
+      "impressions": 0,
+      "engagement_score": 0
+    }
+  },
+  "urn:li:share:7467453386347638784": {
+    "post_id": "urn:li:share:7467453386347638784",
+    "published_at": "2026-06-02T05:53:46.137713+00:00",
+    "article_url": "https://github.com/openai/privacy-filter",
+    "article_title": "OpenAI Privacy Filter. Contribute to openai/privacy-filter development by creating an account on GitHub.",
+    "source": "github.com",
+    "score": null,
+    "comment_text": "Your AI pipeline is leaking data you don't know about.\n\nOpenAI just open-sourced a bidirectional PII detection model built for high-throughput sanitization — on-premises, fast, and tunable without sending data anywhere. 🔒 For enterprises running AI on internal documents, customer records, or regulated data, this changes the cost calculus on building compliant preprocessing pipelines from scratch. In every architecture review I run, data privacy is the silent blocker that delays production deployments by months — not the model quality.\n\nThe compliance conversation is no longer an obstacle to AI deployment — it's where the architecture actually starts.\nWhen your team evaluates a new AI component, who owns the decision on whether it's safe to run on your data — legal, IT, or the AI team?\n#EnterpriseAI #AIArchitecture #AIStrategy",
+    "topics": [
+      "openai",
+      "privacy",
+      "filter",
+      "contribute",
+      "development",
+      "creating",
+      "account",
+      "github",
+      "pipeline",
+      "leaking",
+      "data",
+      "know",
+      "open",
+      "sourced",
+      "bidirectional"
     ],
     "hashtags": [
       "#EnterpriseAI",
