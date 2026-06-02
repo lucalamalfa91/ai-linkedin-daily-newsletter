@@ -20,8 +20,9 @@ from pathlib import Path
 import anthropic
 
 from agents.analytics_agent import update_analytics
+from agents.carousel_agent import create_carousel
 from agents.notifier_agent import request_approval, send as notify
-from agents.publisher_agent import publish
+from agents.publisher_agent import publish, publish_carousel, publish_text
 from agents.writer_agent import critique_post, truncate_comment, write_post
 from config import CHANGELOG_SOURCE_HOMEPAGES, NEWSLETTER_URL, NEWS_JSON_PATH
 from utils.history import commit_history_to_git, extract_hashtags, extract_topics, load_history, save_history
@@ -144,9 +145,34 @@ def _build_post(story: dict, client: anthropic.Anthropic) -> str | None:
     return truncate_comment(comment)
 
 
+def _publish_by_type(
+    post_type: str,
+    comment: str,
+    story: dict,
+    client: anthropic.Anthropic,
+    person_id: str,
+    token: str,
+) -> str | None:
+    """Route to the correct LinkedIn publish function. Returns post_id or None on failure."""
+    if post_type == "text":
+        return publish_text(comment, person_id, token)
+
+    if post_type == "carousel":
+        carousel_result = create_carousel(story, client, person_id, token)
+        if not carousel_result:
+            log.error("Carousel creation failed — aborting publish")
+            return None
+        document_urn, carousel_comment = carousel_result
+        return publish_carousel(carousel_comment, document_urn, story["title"], person_id, token)
+
+    # Default: "article"
+    return publish(comment, NEWSLETTER_URL, story["title"], person_id, token, og=story.get("og"))
+
+
 def _run_url_pipeline(
     url: str,
     skip_confirm: bool,
+    post_type: str,
     client: anthropic.Anthropic,
     tg_token: str,
     tg_chat: str,
@@ -161,7 +187,7 @@ def _run_url_pipeline(
         notify(f"❌ URL non valido per il pipeline diretto: {url}", tg_token, tg_chat)
         sys.exit(1)
 
-    log.info("Direct URL pipeline: %s", url)
+    log.info("Direct URL pipeline: %s (post_type=%s)", url, post_type)
 
     og = fetch_og_meta(url)
     title = og.get("description") or url
@@ -177,7 +203,6 @@ def _run_url_pipeline(
         "body": body,
         "og": og,
     }
-    original = {"summary": og.get("description", ""), "source": story["source"]}
 
     comment = _build_post(story, client)
     if not comment:
@@ -197,7 +222,10 @@ def _run_url_pipeline(
             log.info("Post not approved — skipping LinkedIn publication")
             return
 
-    post_id = publish(comment, url, title, person_id, token, og=og)
+    post_id = _publish_by_type(post_type, comment, story, client, person_id, token)
+    if not post_id:
+        notify("❌ Pubblicazione fallita nel pipeline diretto.", tg_token, tg_chat)
+        sys.exit(1)
 
     history[post_id] = {
         "post_id":       post_id,
@@ -206,6 +234,7 @@ def _run_url_pipeline(
         "article_title": title,
         "source":        story["source"],
         "score":         None,
+        "post_type":     post_type,
         "comment_text":  comment,
         "topics":        extract_topics(title, comment),
         "hashtags":      extract_hashtags(comment),
@@ -238,9 +267,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="LinkedIn AI News Post")
     parser.add_argument("--no-confirm", action="store_true", help="Skip Telegram approval")
     parser.add_argument("--topic", default="", help="URL to write about directly (skips feed/ranking)")
+    parser.add_argument(
+        "--post-type",
+        choices=["article", "text", "carousel"],
+        default="",
+        help="LinkedIn post format: article (default), text (no link card), carousel (PDF document)",
+    )
     args = parser.parse_args()
 
     skip_confirm = args.no_confirm or os.environ.get("SKIP_CONFIRM") == "1"
+    post_type = args.post_type or os.environ.get("POST_TYPE", "article")
 
     tg_token  = os.environ["TELEGRAM_BOT_TOKEN"]
     tg_chat   = os.environ["TELEGRAM_CHAT_ID"]
@@ -257,7 +293,7 @@ def main() -> None:
     topic = args.topic.strip() or os.environ.get("TOPIC", "").strip()
     if topic.startswith("http://") or topic.startswith("https://"):
         try:
-            _run_url_pipeline(topic, skip_confirm, client, tg_token, tg_chat, token, person_id, history)
+            _run_url_pipeline(topic, skip_confirm, post_type, client, tg_token, tg_chat, token, person_id, history)
         except Exception as exc:
             log.exception("Direct URL pipeline failed")
             notify(f"❌ <b>AI LinkedIn Post FAILED</b>\n\n{exc}", tg_token, tg_chat)
@@ -297,38 +333,33 @@ def main() -> None:
         # OG metadata (cached from news.json or fetched live — optional, no skip if missing)
         story["og"] = _build_og(story)
 
-        # Write the LinkedIn post
+        # Write the LinkedIn post (used for article/text; carousel generates its own commentary)
         comment = _build_post(story, client)
         if not comment:
             return
 
-        log.info("Publishing: %s (score %s)", story["title"], story.get("score"))
+        log.info("Publishing: %s (score %s, post_type=%s)", story["title"], story.get("score"), post_type)
 
         # Telegram approval
         if not skip_confirm:
             preview = (
                 f"<b>\U0001f4dd Post da pubblicare su LinkedIn</b>\n\n"
                 f"<b>{story['title']}</b>\n"
-                f"\u2b50 Score: {story.get('score', '?')}/10 • Rank #{story.get('rank', '?')}"
+                f"⭐ Score: {story.get('score', '?')}/10 • Rank #{story.get('rank', '?')}"
                 f" • {story.get('source', '')}\n"
                 f"\U0001f517 {story['url']}\n\n"
                 f"<i>{comment}</i>"
             )
             approved = request_approval(preview, tg_token, tg_chat)
             if not approved:
-                notify("\u23ed Post annullato o timeout — nessuna pubblicazione.", tg_token, tg_chat)
+                notify("⏭ Post annullato o timeout — nessuna pubblicazione.", tg_token, tg_chat)
                 log.info("Post not approved — skipping LinkedIn publication")
                 return
 
-        # LinkedIn card links to the newsletter; dedup in history uses the original article URL
-        post_id = publish(
-            comment,
-            NEWSLETTER_URL,
-            story["title"],
-            person_id,
-            token,
-            og=story["og"],
-        )
+        post_id = _publish_by_type(post_type, comment, story, client, person_id, token)
+        if not post_id:
+            notify("❌ Pubblicazione fallita.", tg_token, tg_chat)
+            return
 
         history[post_id] = {
             "post_id":       post_id,
@@ -337,6 +368,7 @@ def main() -> None:
             "article_title": story["title"],
             "source":        story.get("source", ""),
             "score":         story.get("score", 0),
+            "post_type":     post_type,
             "comment_text":  comment,
             "topics":        extract_topics(story["title"], comment),
             "hashtags":      extract_hashtags(comment),
@@ -346,10 +378,10 @@ def main() -> None:
         commit_history_to_git()
 
         notify(
-            "\u2705 <b>LinkedIn post pubblicato!</b>\n\n"
+            "✅ <b>LinkedIn post pubblicato!</b>\n\n"
             f"\U0001f4cc <b>{story['title']}</b>\n"
             f"\U0001f3f7 {story.get('source', '')} • "
-            f"\u2b50 Score: {story.get('score', 0)}/10 (rank #{story.get('rank', '?')})\n"
+            f"⭐ Score: {story.get('score', 0)}/10 (rank #{story.get('rank', '?')})\n"
             f"\U0001f517 {story['url']}\n\n"
             f"\U0001f4ac <i>{comment}</i>\n\n"
             f"\U0001f194 Post ID: {post_id}",
@@ -359,7 +391,7 @@ def main() -> None:
 
     except Exception as exc:
         log.exception("Pipeline failed")
-        notify(f"\u274c <b>AI LinkedIn Post FAILED</b>\n\n{exc}", tg_token, tg_chat)
+        notify(f"❌ <b>AI LinkedIn Post FAILED</b>\n\n{exc}", tg_token, tg_chat)
         sys.exit(1)
 
 
